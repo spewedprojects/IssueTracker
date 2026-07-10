@@ -1,7 +1,7 @@
 <div align="center">
     <img width="200" src="docs/icon.svg" alt="GHBanner"/>
     <p></p>
-    <h1>MustDo</h1>
+    <h1>Issue Tracker</h1>
 
 </div>
 
