@@ -37,7 +37,9 @@
 package com.gratus.appissuetracker
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -47,6 +49,7 @@ import androidx.compose.runtime.getValue
 import com.gratus.appissuetracker.ui.MainViewModel
 import com.gratus.appissuetracker.ui.Screen
 import com.gratus.appissuetracker.ui.components.FaintBackground
+import com.gratus.appissuetracker.ui.components.ImportConflictDialog
 import com.gratus.appissuetracker.ui.screens.HomeScreen
 import com.gratus.appissuetracker.ui.screens.IssueTrackerScreen
 import com.gratus.appissuetracker.ui.screens.SettingsScreen
@@ -76,6 +79,10 @@ class MainActivity : ComponentActivity() {
                 colorfulHueShift = colorfulHueShift,
                 colorfulSatScale = colorfulSatScale
             ) {
+                val pendingImports by viewModel.pendingImports.collectAsState()
+                val apps by viewModel.apps.collectAsState()
+                val installedApps by viewModel.installedApps.collectAsState()
+
                 FaintBackground(
                     colorSchemeType = colorSchemeType,
                     isDark = isDark,
@@ -95,6 +102,9 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         is Screen.Settings -> {
+                            BackHandler {
+                                viewModel.setActiveScreen(Screen.Home)
+                            }
                             SettingsScreen(
                                 viewModel = viewModel,
                                 onBack = {
@@ -103,6 +113,9 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         is Screen.IssueTracker -> {
+                            BackHandler {
+                                viewModel.setActiveScreen(Screen.Home)
+                            }
                             // Re-load list of apps when leaving tracker (in case open issues count changed)
                             DisposableEffect(Unit) {
                                 onDispose {
@@ -118,6 +131,35 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
+                }
+
+                // Overlay dialog for JSON import conflict customization
+                if (pendingImports.isNotEmpty()) {
+                    val currentTask = pendingImports.first()
+                    ImportConflictDialog(
+                        task = currentTask,
+                        trackedApps = apps,
+                        installedApps = installedApps,
+                        onDismiss = {
+                            viewModel.skipPendingImport(currentTask)
+                        },
+                        onImport = { targetOption, customName, customVersion, trackedApp, installedApp ->
+                            viewModel.executeImport(
+                                task = currentTask,
+                                targetOption = targetOption,
+                                customName = customName,
+                                customVersion = customVersion,
+                                selectedTrackedApp = trackedApp,
+                                selectedInstalledApp = installedApp
+                            ) { success ->
+                                if (success) {
+                                    Toast.makeText(this@MainActivity, "Imported successfully!", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(this@MainActivity, "Import failed.", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    )
                 }
             }
         }

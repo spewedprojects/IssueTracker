@@ -1,22 +1,4 @@
 /*
- * MustDO
- * Copyright (C) 2026 spewedprojects <rkharat98@live.com>
- *
- * This file is part of MustDo Application.
- *
- * MustDo is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, version 3 of the License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * See the LICENSE file for details.
- */
-
-/*
  * Issue Tracker
  * Copyright (C) 2026 spewedprojects <rkharat98@live.com>
  *
@@ -92,6 +74,10 @@ class IssueTrackerViewModel(application: Application, val app: TrackedApp) : And
         }
     }
 
+    fun refresh() {
+        loadIssues()
+    }
+
     private fun migrateExistingIssues(oldList: List<IssueItem>): List<IssueItem> {
         // 1. Sort by timestamp so the oldest issue gets #1
         // 2. Map through and assign indices + 1
@@ -104,14 +90,14 @@ class IssueTrackerViewModel(application: Application, val app: TrackedApp) : And
         }
     }
 
-    fun addIssue(title: String, description: String, category: String, priority: String) {
+    fun addIssue(title: String, description: String, category: String, priorityLabel: String) {
         val currentMaxNumber = _issues.value.maxOfOrNull { it.serialNumber } ?: 0
         val newItem = IssueItem(
             title = title,
             serialNumber = currentMaxNumber + 1,
             description = description,
             category = category,
-            priority = priority,
+            priority = IssueItem.getPriorityFromLabel(priorityLabel), // Convert Label to Int
             appVersion = app.versionName
         )
         val updatedList = listOf(newItem) + _issues.value

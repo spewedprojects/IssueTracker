@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -422,37 +423,36 @@ fun SettingsScreenContent(
 
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
 
-                    // Export all backups row
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onExportBackups() }
-                            .padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    // Actions Column
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.CloudUpload, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(text = "Export All Issues Backup", fontWeight = FontWeight.Bold, fontSize = AppFontSizes.large)
-                            Text(text = "Saves individual JSON logs for all applications inside Documents/IssueTrackerBackups.", fontSize = AppFontSizes.small, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                        Text(text = "Saves individual JSON logs for all applications inside Documents/IssueTrackerBackups.", fontSize = AppFontSizes.small, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                        // Export to Device Button
+                        Button(
+                            onClick = { onExportBackups() },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("export_device_btn")
+                        ) {
+                            Icon(imageVector = Icons.Default.SaveAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Export to Device")
                         }
-                    }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.05f))
+                        Text(text = "Load exported JSON files. Imports apps and restores their tracked issues.", fontSize = AppFontSizes.small, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
 
-                    // Import backups row
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onImportBackups() }
-                            .padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.CloudDownload, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(text = "Import Issues Backups", fontWeight = FontWeight.Bold, fontSize = AppFontSizes.large)
-                            Text(text = "Load exported JSON files. Imports apps and restores their tracked issues.", fontSize = AppFontSizes.small, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                        // Import & Restore Backup Button
+                        OutlinedButton(
+                            onClick = { onImportBackups() },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("import_file_btn")
+                        ) {
+                            Icon(imageVector = Icons.Default.SettingsBackupRestore, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Import & Restore Backup")
                         }
                     }
                 }
@@ -461,7 +461,7 @@ fun SettingsScreenContent(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, heightDp = 1500)
 @Composable
 fun SettingsScreenMinimalPreview() {
     SoftTodoTheme(themeMode = "light", colorSchemeType = "minimal") {
@@ -502,7 +502,7 @@ fun SettingsScreenColorfulDarkPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, heightDp = 1500)
 @Composable
 fun SettingsScreenSimplePreview() {
     SoftTodoTheme(themeMode = "auto", colorSchemeType = "simple") {

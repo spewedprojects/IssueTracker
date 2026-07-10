@@ -1,22 +1,4 @@
 /*
- * MustDO
- * Copyright (C) 2026 spewedprojects <rkharat98@live.com>
- *
- * This file is part of MustDo Application.
- *
- * MustDo is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, version 3 of the License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * See the LICENSE file for details.
- */
-
-/*
  * Issue Tracker
  * Copyright (C) 2026 spewedprojects <rkharat98@live.com>
  *
@@ -112,6 +94,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _globalSearchResults = MutableStateFlow<List<Pair<TrackedApp, IssueItem>>>(emptyList())
     val globalSearchResults: StateFlow<List<Pair<TrackedApp, IssueItem>>> = _globalSearchResults.asStateFlow()
+
+    // Pending JSON imports queue
+    data class PendingImportTask(
+        val uri: Uri,
+        val fileName: String,
+        val issues: List<IssueItem>
+    )
+
+    private val _pendingImports = MutableStateFlow<List<PendingImportTask>>(emptyList())
+    val pendingImports: StateFlow<List<PendingImportTask>> = _pendingImports.asStateFlow()
 
     init {
         loadApps()
@@ -226,7 +218,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         it.serialNumber.toString() == query ||
                         "#${it.serialNumber}".contains(query, ignoreCase = true) ||
                         it.category.contains(query, ignoreCase = true) ||
-                        it.priority.contains(query, ignoreCase = true)
+                                IssueItem.getPriorityLabel(it.priority).contains(query, ignoreCase = true)
                     }
                     filtered.forEach { results.add(Pair(app, it)) }
                 }
@@ -300,60 +292,47 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun importAllIssues(context: Context, uris: List<Uri>, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                var successCount = 0
-                val currentApps = repository.getApps().toMutableList()
-
+                val tasks = mutableListOf<PendingImportTask>()
                 for (uri in uris) {
                     context.contentResolver.openInputStream(uri)?.use { inputStream ->
                         val jsonStr = String(inputStream.readBytes(), Charsets.UTF_8)
-                        val jsonArray = JSONArray(jsonStr)
+                        
+                        var appName: String? = null
+                        var packageName: String? = null
+                        var versionName: String? = null
                         val issues = mutableListOf<IssueItem>()
-                        for (i in 0 until jsonArray.length()) {
-                            issues.add(IssueItem.fromJson(jsonArray.getJSONObject(i)))
+                        
+                        try {
+                            val jsonObject = org.json.JSONObject(jsonStr)
+                            appName = if (jsonObject.has("appName")) jsonObject.getString("appName") else null
+                            packageName = if (jsonObject.has("packageName")) jsonObject.getString("packageName") else null
+                            versionName = if (jsonObject.has("versionName")) jsonObject.getString("versionName") else null
+                            val array = jsonObject.optJSONArray("issues")
+                            if (array != null) {
+                                for (i in 0 until array.length()) {
+                                    issues.add(IssueItem.fromJson(array.getJSONObject(i)))
+                                }
+                            }
+                        } catch (e: Exception) {
+                            // Try as flat array
+                            val jsonArray = JSONArray(jsonStr)
+                            for (i in 0 until jsonArray.length()) {
+                                issues.add(IssueItem.fromJson(jsonArray.getJSONObject(i)))
+                            }
                         }
 
                         if (issues.isNotEmpty()) {
-                            // Extract app name from filename
-                            val fileName = getFileName(context, uri) ?: "Imported_App_${System.currentTimeMillis()}"
-                            var appName = "Imported App"
-                            if (fileName.startsWith("issues_")) {
-                                val temp = fileName.removePrefix("issues_")
-                                val exportIndex = temp.indexOf("_export_")
-                                if (exportIndex != -1) {
-                                    appName = temp.substring(0, exportIndex).replace("_", " ")
-                                } else {
-                                    appName = temp.removeSuffix(".json").replace("_", " ")
-                                }
-                            } else {
-                                appName = fileName.removeSuffix(".json").replace("_", " ")
-                            }
-
-                            // Create app entry
-                            val appId = UUID.randomUUID().toString()
-                            val newApp = TrackedApp(
-                                id = appId,
-                                name = appName,
-                                packageName = null,
-                                versionName = "1.0.0",
-                                isCustom = true,
-                                addedTimestamp = System.currentTimeMillis()
-                            )
-
-                            currentApps.add(0, newApp)
-                            repository.saveIssues(appId, issues)
-                            successCount++
+                            val fileName = getFileName(context, uri) ?: "imported_backup.json"
+                            tasks.add(PendingImportTask(uri, fileName, issues))
                         }
                     }
                 }
-
-                if (successCount > 0) {
-                    repository.saveApps(currentApps)
-                    _apps.value = currentApps
-                    withContext(Dispatchers.Main) {
+                
+                withContext(Dispatchers.Main) {
+                    if (tasks.isNotEmpty()) {
+                        _pendingImports.value = _pendingImports.value + tasks
                         onComplete(true)
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
+                    } else {
                         onComplete(false)
                     }
                 }
@@ -363,6 +342,120 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+    }
+
+    fun skipPendingImport(task: PendingImportTask) {
+        _pendingImports.value = _pendingImports.value.filter { it.uri != task.uri }
+    }
+
+    fun executeImport(
+        task: PendingImportTask,
+        targetOption: Int, // 0 = New Custom, 1 = Existing Tracked, 2 = Installed App
+        customName: String,
+        customVersion: String,
+        selectedTrackedApp: TrackedApp?,
+        selectedInstalledApp: InstalledAppInfo?,
+        onComplete: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val currentApps = repository.getApps().toMutableList()
+                var targetAppId = ""
+                
+                when (targetOption) {
+                    0 -> {
+                        // Create New Custom App
+                        targetAppId = UUID.randomUUID().toString()
+                        val newApp = TrackedApp(
+                            id = targetAppId,
+                            name = customName.trim(),
+                            packageName = null,
+                            versionName = customVersion.trim(),
+                            isCustom = true,
+                            addedTimestamp = System.currentTimeMillis()
+                        )
+                        currentApps.add(0, newApp)
+                        repository.saveApps(currentApps)
+                        
+                        // Save imported issues directly
+                        repository.saveIssues(targetAppId, task.issues)
+                    }
+                    1 -> {
+                        // Merge with existing tracked app
+                        if (selectedTrackedApp == null) return@launch
+                        targetAppId = selectedTrackedApp.id
+                        val existingIssues = repository.getIssues(targetAppId)
+                        val mergedIssues = mergeIssues(existingIssues, task.issues)
+                        repository.saveIssues(targetAppId, mergedIssues)
+                    }
+                    2 -> {
+                        // Merge with installed app
+                        if (selectedInstalledApp == null) return@launch
+                        
+                        // Check if this installed app is already tracked
+                        val existingTracked = currentApps.find { it.id == selectedInstalledApp.packageName }
+                        if (existingTracked != null) {
+                            targetAppId = existingTracked.id
+                            val existingIssues = repository.getIssues(targetAppId)
+                            val mergedIssues = mergeIssues(existingIssues, task.issues)
+                            repository.saveIssues(targetAppId, mergedIssues)
+                        } else {
+                            targetAppId = selectedInstalledApp.packageName
+                            val newApp = TrackedApp(
+                                id = targetAppId,
+                                name = selectedInstalledApp.name,
+                                packageName = selectedInstalledApp.packageName,
+                                versionName = selectedInstalledApp.versionName,
+                                isCustom = false,
+                                addedTimestamp = System.currentTimeMillis()
+                            )
+                            currentApps.add(0, newApp)
+                            repository.saveApps(currentApps)
+                            repository.saveIssues(targetAppId, task.issues)
+                        }
+                    }
+                }
+                
+                // Remove task from queue and refresh lists
+                withContext(Dispatchers.Main) {
+                    _pendingImports.value = _pendingImports.value.filter { it.uri != task.uri }
+                    _apps.value = currentApps
+                    loadApps() // Reload to refresh counts
+                    onComplete(true)
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    onComplete(false)
+                }
+            }
+        }
+    }
+
+    private fun mergeIssues(existing: List<IssueItem>, imported: List<IssueItem>): List<IssueItem> {
+        val mergedList = existing.toMutableList()
+        
+        // Find issues in imported that do not exist by ID
+        val newImported = imported.filter { imp -> existing.none { ext -> ext.id == imp.id } }
+                                  .sortedBy { it.timestamp }
+        
+        var nextSerialNumber = (existing.map { it.serialNumber }.maxOrNull() ?: 0) + 1
+        
+        for (issue in newImported) {
+            val serialConflict = mergedList.any { it.serialNumber == issue.serialNumber }
+            val resolvedIssue = if (serialConflict) {
+                val updated = issue.copy(serialNumber = nextSerialNumber)
+                nextSerialNumber++
+                updated
+            } else {
+                if (issue.serialNumber >= nextSerialNumber) {
+                    nextSerialNumber = issue.serialNumber + 1
+                }
+                issue
+            }
+            mergedList.add(resolvedIssue)
+        }
+        
+        return mergedList
     }
 
     private fun getFileName(context: Context, uri: Uri): String? {

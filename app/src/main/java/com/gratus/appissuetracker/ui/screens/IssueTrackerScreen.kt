@@ -1,22 +1,4 @@
 /*
- * MustDO
- * Copyright (C) 2026 spewedprojects <rkharat98@live.com>
- *
- * This file is part of MustDo Application.
- *
- * MustDo is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, version 3 of the License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * See the LICENSE file for details.
- */
-
-/*
  * Issue Tracker
  * Copyright (C) 2026 spewedprojects <rkharat98@live.com>
  *
@@ -94,6 +76,8 @@ import com.gratus.appissuetracker.ui.theme.dialogContainerColor
 import com.gratus.appissuetracker.ui.utils.DateTimeUtils
 import kotlinx.coroutines.delay
 import java.util.Calendar
+import androidx.compose.ui.tooling.preview.Preview
+import com.gratus.appissuetracker.ui.theme.SoftTodoTheme
 
 class IssueTrackerViewModelFactory(
     private val application: android.app.Application,
@@ -115,12 +99,17 @@ fun IssueTrackerScreen(
     onBack: () -> Unit,
     colorSchemeType: String,
     viewModel: IssueTrackerViewModel = viewModel(
+        key = app.id,
         factory = IssueTrackerViewModelFactory(
             LocalContext.current.applicationContext as android.app.Application,
             app
         )
     )
 ) {
+    LaunchedEffect(app.id) {
+        viewModel.refresh()
+    }
+
     val context = LocalContext.current
     val issues by viewModel.issues.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -350,7 +339,12 @@ fun IssueTrackerScreenContent(
             },
             onSave = { title, desc, cat, prio ->
                 if (itemToEdit != null) {
-                    onUpdateIssue(itemToEdit.copy(title = title, description = desc, category = cat, priority = prio))
+                    onUpdateIssue(itemToEdit.copy(
+                        title = title,
+                        description = desc,
+                        category = cat,
+                        priority = IssueItem.getPriorityFromLabel(prio) // Use 'prio' instead of 'priority'
+                    ))
                 } else {
                     onAddIssue(title, desc, cat, prio)
                 }
@@ -422,6 +416,7 @@ fun IssueCard(
                         fontSize = AppFontSizes.extraSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (issue.isClosed) 0.5f else 0.8f)
                     )
+                    PriorityBadge(priority = issue.priority)
                 }
 
                 Column(
@@ -446,7 +441,6 @@ fun IssueCard(
                         Spacer(modifier = Modifier.width(8.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             CategoryBadge(category = issue.category)
-                            PriorityBadge(priority = issue.priority)
                         }
                     }
                     
@@ -728,18 +722,18 @@ fun IssueCard(
                         }
                     }
                 }
-            }
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onDelete) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(onClick = onEdit) {
-                    Text("Edit")
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDelete) {
+                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = onEdit) {
+                        Text("Edit")
+                    }
                 }
             }
         }
@@ -775,17 +769,23 @@ fun CategoryBadge(category: String) {
 }
 
 @Composable
-fun getPriorityColor(priority: String): Color {
+fun getPriorityColor(priority: Int): Color {
     return when (priority) {
-        "High" -> Color(0xFFE57373)      // Red
-        "Normal" -> Color(0xFFFFB74D)    // Orange
-        "Low" -> Color(0xFF4DB6AC)       // Teal/Mint
+        1 -> Color(0xFFE57373)      // Red
+        2 -> Color(0xFFFFB74D)    // Orange
+        3 -> Color(0xFF4DB6AC)       // Teal/Mint
         else -> MaterialTheme.colorScheme.secondary
     }
 }
 
+// 3. Keep a String overload for the Dialog chips (optional but helpful)
 @Composable
-fun PriorityBadge(priority: String) {
+fun getPriorityColor(priority: String): Color {
+    return getPriorityColor(IssueItem.getPriorityFromLabel(priority))
+}
+
+@Composable
+fun PriorityBadge(priority: Int) {
     val color = getPriorityColor(priority)
     Surface(
         color = color.copy(alpha = 0.2f),
@@ -793,7 +793,7 @@ fun PriorityBadge(priority: String) {
         border = BorderStroke(1.5.dp, color)
     ) {
         Text(
-            text = priority,
+            text = priority.toString(),
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
             fontSize = AppFontSizes.micro,
             fontWeight = FontWeight.Bold,
@@ -813,7 +813,8 @@ fun IssueAddDialog(
     var title by rememberSaveable { mutableStateOf(initialItem?.title ?: "") }
     var description by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(initialItem?.description ?: "")) }
     var category by rememberSaveable { mutableStateOf(initialItem?.category ?: "Issue") }
-    var priority by rememberSaveable { mutableStateOf(initialItem?.priority ?: "Normal") }
+    // Convert the Int priority to its String label for the UI state
+    var priority by rememberSaveable { mutableStateOf(initialItem?.let { IssueItem.getPriorityLabel(it.priority) } ?: "Normal") }
     
     val categories = listOf("Issue", "Feature", "Idea")
     val priorities = listOf("Low", "Normal", "High")
@@ -989,5 +990,108 @@ fun IssueAddDialog(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun IssueCardCollapsedPreview() {
+    SoftTodoTheme {
+        Box(modifier = Modifier.padding(16.dp)) {
+            IssueCard(
+                issue = IssueItem(
+                    id = "1",
+                    serialNumber = 12,
+                    title = "Nullpointer on launch",
+                    description = "Happens when user is not logged in and starts the app.",
+                    category = "Issue",
+                    priority = 1,
+                    isClosed = false,
+                    timestamp = System.currentTimeMillis() - 86400000L,
+                    comments = listOf(
+                        IssueComment("Confirmed on Google Pixel", System.currentTimeMillis() - 43200000L)
+                    )
+                ),
+                onToggle = {},
+                onDelete = {},
+                onEdit = {},
+                onAddComment = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun IssueCardExpandedPreview() {
+    SoftTodoTheme {
+        Box(modifier = Modifier.padding(16.dp)) {
+            IssueCard(
+                issue = IssueItem(
+                    id = "2",
+                    serialNumber = 3,
+                    title = "Add Google Login",
+                    description = "Request from marketing to add Google OAuth options.",
+                    category = "Feature",
+                    priority = 2,
+                    isClosed = false,
+                    timestamp = System.currentTimeMillis() - 172800000L,
+                    comments = listOf(
+                        IssueComment("Requires API Console credentials", System.currentTimeMillis() - 86400000L),
+                        IssueComment("Assigned to backend team", System.currentTimeMillis() - 43200000L)
+                    )
+                ),
+                onToggle = {},
+                onDelete = {},
+                onEdit = {},
+                onAddComment = {},
+                initialExpanded = true
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun IssueTrackerScreenContentPreview() {
+    SoftTodoTheme {
+        IssueTrackerScreenContent(
+            appName = "Example Tracker App",
+            colorSchemeType = "minimal",
+            issues = listOf(
+                IssueItem(
+                    id = "1",
+                    serialNumber = 1,
+                    title = "Crash on login button click",
+                    description = "Immediate crash when tapping log in.",
+                    category = "Issue",
+                    priority = 1,
+                    isClosed = false,
+                    timestamp = System.currentTimeMillis()
+                ),
+                IssueItem(
+                    id = "2",
+                    serialNumber = 2,
+                    title = "Implement Settings screen",
+                    description = "Allow users to toggle dark mode.",
+                    category = "Feature",
+                    priority = 2,
+                    isClosed = true,
+                    timestamp = System.currentTimeMillis() - 3600000L,
+                    closedTimestamp = System.currentTimeMillis()
+                )
+            ),
+            searchQuery = "",
+            currentFilter = IssueFilter.ALL,
+            onBack = {},
+            onSearchQueryChange = {},
+            onFilterChange = {},
+            onExport = {},
+            onToggleIssue = {},
+            onDeleteIssue = {},
+            onUpdateIssue = {},
+            onAddIssue = { _, _, _, _ -> },
+            onAddComment = { _, _ -> }
+        )
     }
 }

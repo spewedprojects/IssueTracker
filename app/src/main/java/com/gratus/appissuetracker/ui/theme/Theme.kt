@@ -1,22 +1,4 @@
 /*
- * MustDO
- * Copyright (C) 2026 spewedprojects <rkharat98@live.com>
- *
- * This file is part of MustDo Application.
- *
- * MustDo is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, version 3 of the License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * See the LICENSE file for details.
- */
-
-/*
  * Issue Tracker
  * Copyright (C) 2026 spewedprojects <rkharat98@live.com>
  *
@@ -41,9 +23,12 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 // Standard light/dark fallback dynamic styling palletes
 private val FallbackDarkColorScheme = darkColorScheme(
@@ -256,6 +241,30 @@ fun SoftTodoTheme(
         colorfulDialogContainerColor(isDark, colorfulHueShift, colorfulSatScale)
     } else {
         colorScheme.surface
+    }
+
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            var ctx = view.context
+            while (ctx is android.content.ContextWrapper) {
+                if (ctx is android.app.Activity) {
+                    break
+                }
+                ctx = ctx.baseContext
+            }
+            val activity = ctx as? android.app.Activity
+            if (activity != null) {
+                val window = activity.window
+                WindowCompat.setDecorFitsSystemWindows(window, false)
+                window.statusBarColor = android.graphics.Color.TRANSPARENT
+                window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                
+                val controller = WindowCompat.getInsetsController(window, view)
+                controller.isAppearanceLightStatusBars = !isDark
+                controller.isAppearanceLightNavigationBars = !isDark
+            }
+        }
     }
 
     CompositionLocalProvider(

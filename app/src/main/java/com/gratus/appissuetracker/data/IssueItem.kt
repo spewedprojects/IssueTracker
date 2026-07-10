@@ -1,22 +1,4 @@
 /*
- * MustDO
- * Copyright (C) 2026 spewedprojects <rkharat98@live.com>
- *
- * This file is part of MustDo Application.
- *
- * MustDo is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, version 3 of the License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * See the LICENSE file for details.
- */
-
-/*
  * Issue Tracker
  * Copyright (C) 2026 spewedprojects <rkharat98@live.com>
  *
@@ -67,7 +49,7 @@ data class IssueItem(
     val title: String,
     val description: String,
     val category: String,
-    val priority: String = "Normal", // Added Priority field (Low, Normal, High)
+    val priority: Int = 2, // Added Priority field (1: High, 2: Normal, 3: Low)
     val isClosed: Boolean = false,
     val timestamp: Long = System.currentTimeMillis(),
     val closedTimestamp: Long? = null,
@@ -111,6 +93,14 @@ data class IssueItem(
                     }
                 }
             }
+
+            // Handle legacy data or String values if they exist in saved JSON
+            val priorityObj = json.opt("priority")
+            val priorityInt = when (priorityObj) {
+                is Int -> priorityObj
+                is String -> getPriorityFromLabel(priorityObj)
+                else -> 2
+            }
             
             return IssueItem(
                 id = json.getString("id"),
@@ -118,13 +108,26 @@ data class IssueItem(
                 title = json.getString("title"),
                 description = json.getString("description"),
                 category = json.getString("category"),
-                priority = json.optString("priority", "Normal"), // Deserialize priority
+                priority = priorityInt, // Use the parsed Int
                 isClosed = json.getBoolean("isClosed"),
                 timestamp = json.getLong("timestamp"),
                 closedTimestamp = if (json.has("closedTimestamp") && !json.isNull("closedTimestamp")) json.getLong("closedTimestamp") else null,
                 comments = commentsList,
                 appVersion = if (json.has("appVersion") && !json.isNull("appVersion")) json.getString("appVersion") else null
             )
+        }
+        fun getPriorityLabel(priority: Int): String = when (priority) {
+            1 -> "High"
+            2 -> "Normal"
+            3 -> "Low"
+            else -> "Normal"
+        }
+
+        fun getPriorityFromLabel(label: String): Int = when (label) {
+            "High" -> 1
+            "Normal" -> 2
+            "Low" -> 3
+            else -> 2
         }
     }
 }

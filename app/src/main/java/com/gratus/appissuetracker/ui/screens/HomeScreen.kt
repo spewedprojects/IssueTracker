@@ -1,22 +1,4 @@
 /*
- * MustDO
- * Copyright (C) 2026 spewedprojects <rkharat98@live.com>
- *
- * This file is part of MustDo Application.
- *
- * MustDo is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, version 3 of the License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * See the LICENSE file for details.
- */
-
-/*
  * Issue Tracker
  * Copyright (C) 2026 spewedprojects <rkharat98@live.com>
  *
@@ -53,6 +35,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -80,6 +63,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -111,6 +95,10 @@ fun HomeScreen(
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
 
     if (isSearchActive) {
+        BackHandler {
+            isSearchActive = false
+            viewModel.setGlobalSearchQuery("")
+        }
         // Whole screen search layout
         SearchScreenOverlay(
             searchQuery = searchQuery,
@@ -277,7 +265,7 @@ fun HomeScreenContent(
                 }
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                    columns = GridCells.Adaptive(minSize = 160.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -385,7 +373,7 @@ fun AppGridCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(0.85f)
+            .aspectRatio(0.95f)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
@@ -419,6 +407,7 @@ fun AppGridCard(
             
             Text(
                 text = app.name,
+                textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
@@ -459,7 +448,7 @@ fun AddApplicationGridCard(onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(0.85f)
+            .aspectRatio(0.95f)
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.08f))
             .clickable { onClick() }
@@ -799,19 +788,14 @@ fun GlobalSearchIssueCard(
                 }
 
                 // Priority
-                val prioColor = when (issue.priority) {
-                    "High" -> Color(0xFFE57373)
-                    "Normal" -> Color(0xFFFFB74D)
-                    "Low" -> Color(0xFF4DB6AC)
-                    else -> MaterialTheme.colorScheme.secondary
-                }
+                val prioColor = getPriorityColor(issue.priority) // Use your existing helper
                 Surface(
                     color = prioColor.copy(alpha = 0.15f),
                     shape = RoundedCornerShape(6.dp),
                     border = BorderStroke(1.dp, prioColor.copy(alpha = 0.4f))
                 ) {
                     Text(
-                        text = issue.priority,
+                        text = IssueItem.getPriorityLabel(issue.priority),
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                         fontSize = AppFontSizes.pico,
                         fontWeight = FontWeight.Bold,
@@ -1124,7 +1108,7 @@ fun HomeScreenContentSearchPreview() {
                         title = "App crashes on startup",
                         description = "Crashes on startup with NullPointerException",
                         category = "Issue",
-                        priority = "High",
+                        priority = 1,
                         isClosed = false,
                         timestamp = 1234567890L
                     )
@@ -1137,7 +1121,7 @@ fun HomeScreenContentSearchPreview() {
                         title = "Request to support dark mode",
                         description = "Add dark mode toggle to settings",
                         category = "Feature",
-                        priority = "Normal",
+                        priority = 2,
                         isClosed = false,
                         timestamp = 1234567890L
                     )
