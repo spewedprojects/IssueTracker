@@ -39,15 +39,49 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.gratus.appissuetracker.data.TrackedApp
 import com.gratus.appissuetracker.ui.InstalledAppInfo
 import com.gratus.appissuetracker.ui.MainViewModel
+import com.gratus.appissuetracker.ui.screens.AppLauncherIcon
 import com.gratus.appissuetracker.ui.theme.AppFontSizes
 import com.gratus.appissuetracker.ui.theme.dialogContainerColor
+
+import androidx.compose.ui.tooling.preview.Preview
+import com.gratus.appissuetracker.ui.theme.SoftTodoTheme
+import com.gratus.appissuetracker.data.IssueItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportConflictDialog(
+    task: MainViewModel.PendingImportTask,
+    trackedApps: List<TrackedApp>,
+    installedApps: List<InstalledAppInfo>,
+    onDismiss: () -> Unit,
+    onImport: (
+        targetOption: Int,
+        customName: String,
+        customVersion: String,
+        selectedTrackedApp: TrackedApp?,
+        selectedInstalledApp: InstalledAppInfo?
+    ) -> Unit,
+    initialTargetOption: Int = 0
+) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        ImportConflictDialogContent(
+            task = task,
+            trackedApps = trackedApps,
+            installedApps = installedApps,
+            onDismiss = onDismiss,
+            onImport = onImport,
+            initialTargetOption = initialTargetOption
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ImportConflictDialogContent(
     task: MainViewModel.PendingImportTask,
     trackedApps: List<TrackedApp>,
     installedApps: List<InstalledAppInfo>,
@@ -58,9 +92,10 @@ fun ImportConflictDialog(
         customVersion: String,
         selectedTrackedApp: TrackedApp?,
         selectedInstalledApp: InstalledAppInfo?
-    ) -> Unit
+    ) -> Unit,
+    initialTargetOption: Int = 0
 ) {
-    var targetOption by remember { mutableStateOf(0) } // 0 = New Custom, 1 = Existing, 2 = Installed
+    var targetOption by remember { mutableStateOf(initialTargetOption) } // 0 = New Custom, 1 = Existing, 2 = Installed
     
     // Parse default app name from filename
     val defaultAppName = remember(task.fileName) {
@@ -99,17 +134,15 @@ fun ImportConflictDialog(
         }
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth(0.92f)
-                .heightIn(max = 800.dp),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.dialogContainerColor,
-                contentColor = MaterialTheme.colorScheme.onSurface
-            )
-        ) {
+    Card(
+        modifier = Modifier.fillMaxWidth(0.85f)
+            .heightIn(max = 750.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.dialogContainerColor,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        )
+    ) {
             Column(
                 modifier = Modifier
                     .padding(24.dp)
@@ -232,6 +265,7 @@ fun ImportConflictDialog(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                                             ) {
+                                                AppLauncherIcon(packageName = app.name, modifier = Modifier.size(32.dp))
                                                 Column(modifier = Modifier.weight(1f)) {
                                                     Text(text = app.name, fontWeight = FontWeight.Bold, fontSize = AppFontSizes.small, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                                     Text(text = "v${app.versionName}", fontSize = AppFontSizes.pico, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
@@ -288,6 +322,7 @@ fun ImportConflictDialog(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                                             ) {
+                                                AppLauncherIcon(packageName = appInfo.packageName, modifier = Modifier.size(32.dp))
                                                 Column(modifier = Modifier.weight(1f)) {
                                                     Text(text = appInfo.name, fontWeight = FontWeight.Bold, fontSize = AppFontSizes.small, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                                     Text(text = appInfo.packageName, fontSize = AppFontSizes.pico, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -336,5 +371,68 @@ fun ImportConflictDialog(
                 }
             }
         }
+}
+
+private val mockTask = MainViewModel.PendingImportTask(
+    uri = android.net.Uri.EMPTY,
+    fileName = "issues_RocketApp_export_2026.json",
+    issues = listOf(
+        IssueItem(serialNumber = 1, title = "Crash on launch", description = "", category = "Issue", isClosed = false, timestamp = 0L),
+        IssueItem(serialNumber = 2, title = "Settings tab addition", description = "", category = "Feature", isClosed = false, timestamp = 0L)
+    )
+)
+
+private val mockTrackedApps = listOf(
+    TrackedApp("1", "RocketApp", "com.example.rocket", "1.2.3", isCustom = false),
+    TrackedApp("2", "ChatFlow", null, "0.1.0", isCustom = true)
+)
+
+private val mockInstalledApps = listOf(
+    InstalledAppInfo("Gmail", "com.google.android.gm", "2023.05"),
+    InstalledAppInfo("WhatsApp", "com.whatsapp", "2.23.1")
+)
+
+@Preview(showBackground = true)
+@Composable
+fun ImportConflictDialogNewAppPreview() {
+    SoftTodoTheme {
+        ImportConflictDialogContent(
+            task = mockTask,
+            trackedApps = mockTrackedApps,
+            installedApps = mockInstalledApps,
+            onDismiss = {},
+            onImport = { _, _, _, _, _ -> },
+            initialTargetOption = 0
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ImportConflictDialogTrackedAppPreview() {
+    SoftTodoTheme {
+        ImportConflictDialogContent(
+            task = mockTask,
+            trackedApps = mockTrackedApps,
+            installedApps = mockInstalledApps,
+            onDismiss = {},
+            onImport = { _, _, _, _, _ -> },
+            initialTargetOption = 1
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ImportConflictDialogInstalledAppPreview() {
+    SoftTodoTheme {
+        ImportConflictDialogContent(
+            task = mockTask,
+            trackedApps = mockTrackedApps,
+            installedApps = mockInstalledApps,
+            onDismiss = {},
+            onImport = { _, _, _, _, _ -> },
+            initialTargetOption = 2
+        )
     }
 }

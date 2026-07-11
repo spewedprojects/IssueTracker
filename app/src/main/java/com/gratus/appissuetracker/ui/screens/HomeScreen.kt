@@ -71,6 +71,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.net.toUri
 import com.gratus.appissuetracker.R
 import com.gratus.appissuetracker.data.IssueItem
@@ -171,7 +172,7 @@ fun HomeScreenContent(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateToSettings) {
-                        Icon(imageVector = Icons.Default.Settings, contentDescription = "Settings")
+                        Icon(painterResource(R.drawable.manufacturing_48px), contentDescription = "Settings")
                     }
                 },
                 actions = {
@@ -797,12 +798,12 @@ fun GlobalSearchIssueCard(
                 }
                 Surface(
                     color = catColor.copy(alpha = 0.15f),
-                    shape = RoundedCornerShape(6.dp),
+                    shape = RoundedCornerShape(8.dp),
                     border = BorderStroke(1.dp, catColor.copy(alpha = 0.4f))
                 ) {
                     Text(
-                        text = issue.category,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        text = "Category: " + issue.category,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 0.dp),
                         fontSize = AppFontSizes.pico,
                         fontWeight = FontWeight.Bold,
                         color = catColor
@@ -813,12 +814,12 @@ fun GlobalSearchIssueCard(
                 val prioColor = getPriorityColor(issue.priority) // Use your existing helper
                 Surface(
                     color = prioColor.copy(alpha = 0.15f),
-                    shape = RoundedCornerShape(6.dp),
+                    shape = RoundedCornerShape(8.dp),
                     border = BorderStroke(1.dp, prioColor.copy(alpha = 0.4f))
                 ) {
                     Text(
-                        text = IssueItem.getPriorityLabel(issue.priority),
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        text = "Priority: " + IssueItem.getPriorityLabel(issue.priority),
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 0.dp),
                         fontSize = AppFontSizes.pico,
                         fontWeight = FontWeight.Bold,
                         color = prioColor
@@ -894,7 +895,27 @@ fun AddAppDialog(
     onAddCustom: (String, String) -> Unit,
     onAddInstalled: (InstalledAppInfo) -> Unit
 ) {
-    var activeTab by remember { mutableStateOf(0) } // 0 = Custom, 1 = Installed
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        AddAppDialogContent(
+            installedApps = installedApps,
+            onDismiss = onDismiss,
+            onAddCustom = onAddCustom,
+            onAddInstalled = onAddInstalled
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddAppDialogContent(
+    installedApps: List<InstalledAppInfo>,
+    onDismiss: () -> Unit,
+    onAddCustom: (String, String) -> Unit,
+    onAddInstalled: (InstalledAppInfo) -> Unit,
+    initialActiveTab: Int = 0,
+    modifier: Modifier = Modifier
+) {
+    var activeTab by remember { mutableStateOf(initialActiveTab) } // 0 = Custom, 1 = Installed
     
     // Custom App fields
     var customName by remember { mutableStateOf("") }
@@ -913,12 +934,10 @@ fun AddAppDialog(
         }
     }
     var selectedApp by remember { mutableStateOf<InstalledAppInfo?>(null) }
-
-    Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 800.dp),
+                .fillMaxWidth(0.85f)
+                .heightIn(max = 750.dp),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.dialogContainerColor,
@@ -1071,7 +1090,6 @@ fun AddAppDialog(
                 }
             }
         }
-    }
 }
 
 @Preview(showBackground = true)
@@ -1190,19 +1208,42 @@ fun AppGridCardPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Add App Dialog - Custom Tab", backgroundColor = 0X000)
 @Composable
-fun AddAppDialogPreview() {
+fun AddAppDialogCustomTabPreview() {
     SoftTodoTheme {
-        AddAppDialog(
-            installedApps = listOf(
-                InstalledAppInfo("WhatsApp", "com.whatsapp", "2.23.1"),
-                InstalledAppInfo("Gmail", "com.google.android.gm", "2023.05"),
-                InstalledAppInfo("Spotify", "com.spotify.music", "8.8.2")
-            ),
-            onDismiss = {},
-            onAddCustom = { _, _ -> },
-            onAddInstalled = {}
-        )
+        Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
+            AddAppDialogContent(
+                installedApps = listOf(
+                    InstalledAppInfo("WhatsApp", "com.whatsapp", "2.23.1"),
+                    InstalledAppInfo("Gmail", "com.google.android.gm", "2023.05"),
+                    InstalledAppInfo("Spotify", "com.spotify.music", "8.8.2")
+                ),
+                onDismiss = {},
+                onAddCustom = { _, _ -> },
+                onAddInstalled = {},
+                initialActiveTab = 0
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Add App Dialog - Installed Tab", backgroundColor = 0X000)
+@Composable
+fun AddAppDialogInstalledTabPreview() {
+    SoftTodoTheme {
+        Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
+            AddAppDialogContent(
+                installedApps = listOf(
+                    InstalledAppInfo("WhatsApp", "com.whatsapp", "2.23.1"),
+                    InstalledAppInfo("Gmail", "com.google.android.gm", "2023.05"),
+                    InstalledAppInfo("Spotify", "com.spotify.music", "8.8.2")
+                ),
+                onDismiss = {},
+                onAddCustom = { _, _ -> },
+                onAddInstalled = {},
+                initialActiveTab = 1
+            )
+        }
     }
 }

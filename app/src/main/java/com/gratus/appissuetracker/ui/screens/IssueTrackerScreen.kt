@@ -37,6 +37,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.automirrored.filled.Launch
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -51,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -123,6 +125,16 @@ fun IssueTrackerScreen(
         searchQuery = searchQuery,
         currentFilter = currentFilter,
         onBack = onBack,
+        onLaunch = app.packageName?.let { pkg ->
+            {
+                val intent = context.packageManager.getLaunchIntentForPackage(pkg)
+                if (intent != null) {
+                    context.startActivity(intent)
+                } else {
+                    Toast.makeText(context, "App not found or cannot be launched", Toast.LENGTH_SHORT).show()
+                }
+            }
+        },
         onSearchQueryChange = { viewModel.setSearchQuery(it) },
         onFilterChange = { viewModel.setFilter(it) },
         onExport = { viewModel.exportAndShare(context) },
@@ -143,6 +155,7 @@ fun IssueTrackerScreenContent(
     searchQuery: String,
     currentFilter: IssueFilter,
     onBack: () -> Unit,
+    onLaunch: (() -> Unit)? = null,
     onSearchQueryChange: (String) -> Unit,
     onFilterChange: (IssueFilter) -> Unit,
     onExport: () -> Unit,
@@ -179,6 +192,16 @@ fun IssueTrackerScreenContent(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    // Only show the launch button if onLaunch is provided
+                    onLaunch?.let {
+                        IconButton(onClick = it) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Launch,
+                                contentDescription = "Launch App")
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -417,7 +440,6 @@ fun IssueCard(
                         fontSize = AppFontSizes.extraSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (issue.isClosed) 0.5f else 0.8f)
                     )
-                    PriorityBadge(priority = issue.priority)
                 }
 
                 Column(
@@ -516,24 +538,31 @@ fun IssueCard(
                         }
                     }
                 }
+                Column(horizontalAlignment = Alignment.End) {
 
-                Icon(
-                    imageVector = Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Expand",
-                    modifier = Modifier
-                        .rotate(rotation)
-                        .size(24.dp)
-                        .align(Alignment.Top),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
+                    PriorityBadge(priority = issue.priority)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Expand",
+                        modifier = Modifier
+                            .rotate(rotation)
+                            .size(24.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+
+
+                }
             }
 
             if (expanded) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "App version: ${issue.appVersion ?: "Unknown"}",
+                    text = "v: ${issue.appVersion ?: "Unknown"}",
                     style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.align(Alignment.End).padding(horizontal = 6.dp),
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(horizontal = 6.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
@@ -725,7 +754,9 @@ fun IssueCard(
                 }
 
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onDelete) {
@@ -761,7 +792,7 @@ fun CategoryBadge(category: String) {
     ) {
         Text(
             text = category,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 0.dp),
             fontSize = AppFontSizes.micro,
             fontWeight = FontWeight.Bold,
             color = color
@@ -790,12 +821,12 @@ fun PriorityBadge(priority: Int) {
     val color = getPriorityColor(priority)
     Surface(
         color = color.copy(alpha = 0.2f),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(25.dp),
         border = BorderStroke(1.5.dp, color)
     ) {
         Text(
             text = priority.toString(),
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 0.dp),
             fontSize = AppFontSizes.micro,
             fontWeight = FontWeight.Bold,
             color = color
@@ -810,6 +841,23 @@ fun IssueAddDialog(
     onDismiss: () -> Unit,
     onSave: (title: String, description: String, category: String, priority: String) -> Unit
 ) {
+    Dialog(onDismissRequest = onDismiss) {
+        IssueAddDialogContent(
+            initialItem = initialItem,
+            onDismiss = onDismiss,
+            onSave = onSave
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun IssueAddDialogContent(
+    initialItem: IssueItem?,
+    onDismiss: () -> Unit,
+    onSave: (title: String, description: String, category: String, priority: String) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val context = LocalContext.current
     var title by rememberSaveable { mutableStateOf(initialItem?.title ?: "") }
     var description by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(initialItem?.description ?: "")) }
@@ -820,22 +868,23 @@ fun IssueAddDialog(
     val categories = listOf("Issue", "Feature", "Idea")
     val priorities = listOf("Low", "Normal", "High")
 
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth(0.92f),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.dialogContainerColor,
-                contentColor = MaterialTheme.colorScheme.onSurface
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth(0.88f),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.dialogContainerColor,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
             Column(
-                modifier = Modifier.padding(24.dp).fillMaxWidth()
+                modifier = Modifier
+                    .padding(24.dp)
+                    .fillMaxWidth()
             ) {
                 Text(
-                    text = if (initialItem == null) "New Tracker Item" else "Edit Item",
+                    text = if (initialItem == null) "New Issue" else "Edit Issue",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -858,7 +907,9 @@ fun IssueAddDialog(
                 
                 Text("Category", fontSize = AppFontSizes.small)
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 0.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     categories.forEach { cat ->
@@ -875,22 +926,21 @@ fun IssueAddDialog(
                                 containerColor = Color.Transparent,
                                 labelColor = catColor.copy(alpha = 0.6f)
                             ),
-                            border = FilterChipDefaults.filterChipBorder(
-                                enabled = true,
-                                selected = isSelected,
-                                borderColor = catColor.copy(alpha = 0.4f),
-                                selectedBorderColor = catColor,
-                                borderWidth = 1.5.dp
-                            )
+                            border = BorderStroke(
+                                color = if (isSelected) catColor else catColor.copy(alpha = 0.4f),
+                                width = 1.5.dp),
+                            shape = RoundedCornerShape(8.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text("Priority", fontSize = AppFontSizes.small)
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 0.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     priorities.forEach { prio ->
@@ -907,13 +957,10 @@ fun IssueAddDialog(
                                 containerColor = Color.Transparent,
                                 labelColor = prioColor.copy(alpha = 0.6f)
                             ),
-                            border = FilterChipDefaults.filterChipBorder(
-                                enabled = true,
-                                selected = isSelected,
-                                borderColor = prioColor.copy(alpha = 0.4f),
-                                selectedBorderColor = prioColor,
-                                borderWidth = 1.5.dp
-                            )
+                            border = BorderStroke(
+                                color = if (isSelected) prioColor else prioColor.copy(alpha = 0.4f),
+                                width = 1.5.dp),
+                            shape = RoundedCornerShape(8.dp)
                         )
                     }
                 }
@@ -924,7 +971,9 @@ fun IssueAddDialog(
                     value = description,
                     onValueChange = { description = it },
                     label = { Text("Description") },
-                    modifier = Modifier.fillMaxWidth().height(180.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp),
                     shape = RoundedCornerShape(12.dp),
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Sentences
@@ -943,7 +992,11 @@ fun IssueAddDialog(
                             val selectedText = text.substring(selection.start, selection.end)
                             val formatted = "**$selectedText**"
                             val newText = text.replaceRange(selection.start, selection.end, formatted)
-                            description = TextFieldValue(newText, androidx.compose.ui.text.TextRange(selection.start + formatted.length))
+                            // Fix: Offset by 2 (for "**") and maintain selection length
+                            description = TextFieldValue(
+                                text = newText,
+                                selection = TextRange(selection.start + 2, selection.start + 2 + selectedText.length)
+                            )
                         } else {
                             Toast.makeText(context, "Select text to format bold", Toast.LENGTH_SHORT).show()
                         }
@@ -994,7 +1047,6 @@ fun IssueAddDialog(
                 }
             }
         }
-    }
 }
 
 private val previewIssues = listOf(
@@ -1007,26 +1059,6 @@ private val previewIssues = listOf(
         isClosed = false,
         timestamp = System.currentTimeMillis() - 86400000,
         comments = listOf(IssueComment("Assigned to dev team"), IssueComment("Adding test logs..."))
-    ),
-    IssueItem(
-        id = "23254",
-        serialNumber = 2,
-        title = "Implement biometric authentication",
-        description = "Allow users to log in using fingerprint or face unlock for faster access.",
-        category = "Feature",
-        isClosed = false,
-        timestamp = System.currentTimeMillis() - 7200000L,
-        comments = emptyList()
-    ),
-    IssueItem(
-        id = "35342",
-        serialNumber = 1,
-        title = "Snooze presets customization",
-        description = "Idea to allow users to edit custom snooze duration presets in settings.",
-        category = "Idea",
-        isClosed = true,
-        timestamp = System.currentTimeMillis() - 172800000L,
-        comments = listOf(IssueComment("Good idea, completed in v2.4"))
     )
 )
 
@@ -1121,6 +1153,7 @@ fun IssueTrackerScreenContentPreview() {
             searchQuery = "",
             currentFilter = IssueFilter.ALL,
             onBack = {},
+            onLaunch = {},
             onSearchQueryChange = {},
             onFilterChange = {},
             onExport = {},
@@ -1133,12 +1166,12 @@ fun IssueTrackerScreenContentPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "Add/Edit Issue Dialog")
+@Preview(showBackground = true, name = "Add/Edit Issue Dialog", backgroundColor = 0X00000)
 @Composable
 fun IssueAddDialogPreview() {
     SoftTodoTheme(colorSchemeType = "minimal", themeMode = "light") {
-        Box(modifier = Modifier.fillMaxSize()) {
-            IssueAddDialog(
+        Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
+            IssueAddDialogContent(
                 initialItem = previewIssues[0],
                 onDismiss = {},
                 onSave = { _, _, _, _ -> }

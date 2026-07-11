@@ -39,12 +39,6 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import java.util.UUID
 
-sealed interface Screen {
-    object Home : Screen
-    object Settings : Screen
-    data class IssueTracker(val app: TrackedApp) : Screen
-}
-
 data class InstalledAppInfo(
     val name: String,
     val packageName: String,
@@ -54,10 +48,6 @@ data class InstalledAppInfo(
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = IssueTrackerRepository(application)
     private val sharedPrefs = application.getSharedPreferences("issue_tracker_prefs", Context.MODE_PRIVATE)
-
-    // Navigation State
-    private val _activeScreen = MutableStateFlow<Screen>(Screen.Home)
-    val activeScreen: StateFlow<Screen> = _activeScreen.asStateFlow()
 
     // Settings States
     private val _settingsTheme = MutableStateFlow(sharedPrefs.getString("theme", "auto") ?: "auto")
@@ -107,10 +97,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         loadApps()
-    }
-
-    fun setActiveScreen(screen: Screen) {
-        _activeScreen.value = screen
     }
 
     fun setTheme(theme: String) {
