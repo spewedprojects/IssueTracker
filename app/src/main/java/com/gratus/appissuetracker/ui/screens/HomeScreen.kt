@@ -21,6 +21,8 @@ package com.gratus.appissuetracker.ui.screens
 import android.content.Intent
 import android.widget.Space
 import android.widget.Toast
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -125,8 +127,10 @@ fun HomeScreen(
             onAddCustom = { name, version ->
                 viewModel.addApp(name, null, version, true)
             },
-            onAddInstalled = { appInfo ->
-                viewModel.addApp(appInfo.name, appInfo.packageName, appInfo.versionName, false)
+            onAddInstalled = { appInfos ->
+                appInfos.forEach { appInfo ->
+                    viewModel.addApp(appInfo.name, appInfo.packageName, appInfo.versionName, false)
+                }
             },
             onDeleteApp = { viewModel.deleteApp(it) },
             onLoadInstalledApps = { viewModel.loadInstalledApps(context) },
@@ -145,7 +149,7 @@ fun HomeScreenContent(
     totalCounts: Map<String, Int>,
     installedAppsList: List<InstalledAppInfo>,
     onAddCustom: (String, String) -> Unit,
-    onAddInstalled: (InstalledAppInfo) -> Unit,
+    onAddInstalled: (List<InstalledAppInfo>) -> Unit,
     onDeleteApp: (TrackedApp) -> Unit,
     onLoadInstalledApps: () -> Unit,
     onNavigateToTracker: (TrackedApp) -> Unit,
@@ -229,7 +233,7 @@ fun HomeScreenContent(
                             text = "Add an application to start tracking issues and stay organized.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            textAlign = TextAlign.Center
                         )
 
                         // Center add button with dotted-looking circle icon
@@ -303,7 +307,7 @@ fun HomeScreenContent(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 20.dp, top = 8.dp, start = 16.dp, end = 16.dp),
+                    .padding(bottom = 12.dp, top = 8.dp, start = 16.dp, end = 16.dp),
                 horizontalArrangement = Arrangement.Start,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -350,8 +354,8 @@ fun HomeScreenContent(
                 onAddCustom(name, version)
                 showAddDialog = false
             },
-            onAddInstalled = { appInfo ->
-                onAddInstalled(appInfo)
+            onAddInstalled = { appInfos ->
+                onAddInstalled(appInfos)
                 showAddDialog = false
             }
         )
@@ -534,36 +538,56 @@ fun GridLetterAvatar(name: String, modifier: Modifier = Modifier) {
         Text(
             text = char,
             fontWeight = FontWeight.Bold,
-            fontSize = AppFontSizes.extraLarge,
+            fontSize = AppFontSizes.headline,
             color = bgColor
         )
+    }
+}
+
+object AppIconCache {
+    private val cache = java.util.concurrent.ConcurrentHashMap<String, androidx.compose.ui.graphics.ImageBitmap>()
+
+    fun get(packageName: String): androidx.compose.ui.graphics.ImageBitmap? {
+        return cache[packageName]
+    }
+
+    fun put(packageName: String, bitmap: androidx.compose.ui.graphics.ImageBitmap) {
+        cache[packageName] = bitmap
     }
 }
 
 @Composable
 fun GridAppLauncherIcon(packageName: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val imageBitmap = remember(packageName) {
-        try {
-            val pm = context.packageManager
-            val iconDrawable = pm.getApplicationIcon(packageName)
-            val bitmap = android.graphics.Bitmap.createBitmap(
-                iconDrawable.intrinsicWidth.coerceAtLeast(1),
-                iconDrawable.intrinsicHeight.coerceAtLeast(1),
-                android.graphics.Bitmap.Config.ARGB_8888
-            )
-            val canvas = android.graphics.Canvas(bitmap)
-            iconDrawable.setBounds(0, 0, canvas.width, canvas.height)
-            iconDrawable.draw(canvas)
-            bitmap.asImageBitmap()
-        } catch (e: Exception) {
-            null
+    var imageBitmap by remember(packageName) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(AppIconCache.get(packageName)) }
+
+    if (imageBitmap == null) {
+        LaunchedEffect(packageName) {
+            val bitmap = withContext(Dispatchers.IO) {
+                try {
+                    val pm = context.packageManager
+                    val iconDrawable = pm.getApplicationIcon(packageName)
+                    val width = iconDrawable.intrinsicWidth.coerceAtLeast(1).coerceAtMost(400)
+                    val height = iconDrawable.intrinsicHeight.coerceAtLeast(1).coerceAtMost(400)
+                    val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
+                    val canvas = android.graphics.Canvas(bitmap)
+                    iconDrawable.setBounds(0, 0, canvas.width, canvas.height)
+                    iconDrawable.draw(canvas)
+                    bitmap.asImageBitmap()
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            if (bitmap != null) {
+                AppIconCache.put(packageName, bitmap)
+                imageBitmap = bitmap
+            }
         }
     }
 
     if (imageBitmap != null) {
         Image(
-            bitmap = imageBitmap,
+            bitmap = imageBitmap!!,
             contentDescription = null,
             modifier = modifier
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f), shape = RoundedCornerShape(16.dp))
@@ -833,27 +857,35 @@ fun GlobalSearchIssueCard(
 @Composable
 fun AppLauncherIcon(packageName: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val imageBitmap = remember(packageName) {
-        try {
-            val pm = context.packageManager
-            val iconDrawable = pm.getApplicationIcon(packageName)
-            val bitmap = android.graphics.Bitmap.createBitmap(
-                iconDrawable.intrinsicWidth.coerceAtLeast(1),
-                iconDrawable.intrinsicHeight.coerceAtLeast(1),
-                android.graphics.Bitmap.Config.ARGB_8888
-            )
-            val canvas = android.graphics.Canvas(bitmap)
-            iconDrawable.setBounds(0, 0, canvas.width, canvas.height)
-            iconDrawable.draw(canvas)
-            bitmap.asImageBitmap()
-        } catch (e: Exception) {
-            null
+    var imageBitmap by remember(packageName) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(AppIconCache.get(packageName)) }
+
+    if (imageBitmap == null) {
+        LaunchedEffect(packageName) {
+            val bitmap = withContext(Dispatchers.IO) {
+                try {
+                    val pm = context.packageManager
+                    val iconDrawable = pm.getApplicationIcon(packageName)
+                    val width = iconDrawable.intrinsicWidth.coerceAtLeast(1).coerceAtMost(256)
+                    val height = iconDrawable.intrinsicHeight.coerceAtLeast(1).coerceAtMost(256)
+                    val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
+                    val canvas = android.graphics.Canvas(bitmap)
+                    iconDrawable.setBounds(0, 0, canvas.width, canvas.height)
+                    iconDrawable.draw(canvas)
+                    bitmap.asImageBitmap()
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            if (bitmap != null) {
+                AppIconCache.put(packageName, bitmap)
+                imageBitmap = bitmap
+            }
         }
     }
 
     if (imageBitmap != null) {
         Image(
-            bitmap = imageBitmap,
+            bitmap = imageBitmap!!,
             contentDescription = null,
             modifier = modifier.clip(CircleShape)
         )
@@ -893,7 +925,7 @@ fun AddAppDialog(
     installedApps: List<InstalledAppInfo>,
     onDismiss: () -> Unit,
     onAddCustom: (String, String) -> Unit,
-    onAddInstalled: (InstalledAppInfo) -> Unit
+    onAddInstalled: (List<InstalledAppInfo>) -> Unit
 ) {
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         AddAppDialogContent(
@@ -911,7 +943,7 @@ fun AddAppDialogContent(
     installedApps: List<InstalledAppInfo>,
     onDismiss: () -> Unit,
     onAddCustom: (String, String) -> Unit,
-    onAddInstalled: (InstalledAppInfo) -> Unit,
+    onAddInstalled: (List<InstalledAppInfo>) -> Unit,
     initialActiveTab: Int = 0,
     modifier: Modifier = Modifier
 ) {
@@ -933,7 +965,7 @@ fun AddAppDialogContent(
             }
         }
     }
-    var selectedApp by remember { mutableStateOf<InstalledAppInfo?>(null) }
+    var selectedApps by remember { mutableStateOf(emptySet<InstalledAppInfo>()) }
         Card(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
@@ -1037,13 +1069,19 @@ fun AddAppDialogContent(
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 items(filteredApps) { appInfo ->
-                                    val isSelected = selectedApp?.packageName == appInfo.packageName
+                                    val isSelected = selectedApps.contains(appInfo)
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clip(RoundedCornerShape(6.dp))
                                             .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                                            .clickable { selectedApp = appInfo }
+                                            .clickable {
+                                                selectedApps = if (isSelected) {
+                                                    selectedApps - appInfo
+                                                } else {
+                                                    selectedApps + appInfo
+                                                }
+                                            }
                                             .padding(8.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -1054,7 +1092,7 @@ fun AddAppDialogContent(
                                             Text(text = appInfo.packageName, fontSize = AppFontSizes.small, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         }
                                         if (isSelected) {
-                                            Icon(imageVector = Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                            Icon(imageVector = Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp).padding(end = 8.dp))
                                         }
                                     }
                                 }
@@ -1080,12 +1118,14 @@ fun AddAppDialogContent(
                                       onAddCustom(customName.trim(), customVersion.trim())
                                   }
                             } else {
-                                  selectedApp?.let { onAddInstalled(it) }
+                                  if (selectedApps.isNotEmpty()) {
+                                      onAddInstalled(selectedApps.toList())
+                                  }
                             }
                         },
-                        enabled = if (activeTab == 0) customName.isNotBlank() else selectedApp != null
+                        enabled = if (activeTab == 0) customName.isNotBlank() else selectedApps.isNotEmpty()
                     ) {
-                        Text("Add")
+                        Text(if (activeTab == 1 && selectedApps.size > 1) "Add (${selectedApps.size})" else "Add")
                     }
                 }
             }

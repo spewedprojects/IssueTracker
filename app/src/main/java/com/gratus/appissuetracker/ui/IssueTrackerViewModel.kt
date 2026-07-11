@@ -90,10 +90,12 @@ class IssueTrackerViewModel(application: Application, val app: TrackedApp) : And
         }
     }
 
-    fun addIssue(title: String, description: String, category: String, priorityLabel: String) {
+    fun addIssue(title: String, description: String, category: String, priorityLabel: String, customVersionName: String? = null) {
         val currentMaxNumber = _issues.value.maxOfOrNull { it.serialNumber } ?: 0
         
-        val liveVersion = if (!app.isCustom && app.packageName != null) {
+        val liveVersion = if (!customVersionName.isNullOrBlank()) {
+            customVersionName.trim()
+        } else if (!app.isCustom && app.packageName != null) {
             try {
                 val pm = getApplication<Application>().packageManager
                 pm.getPackageInfo(app.packageName, 0).versionName ?: app.versionName
@@ -115,6 +117,28 @@ class IssueTrackerViewModel(application: Application, val app: TrackedApp) : And
         val updatedList = listOf(newItem) + _issues.value
         _issues.value = updatedList
         saveToDisk(updatedList)
+
+        // If the app's versionName is empty (older import), and a customVersionName is provided,
+        // update the app's versionName in the database as well to "seal" it.
+        if (app.versionName.isBlank() && !liveVersion.isBlank()) {
+            updateAppVersionName(liveVersion)
+        }
+    }
+
+    fun updateAppVersionName(newVersionName: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val currentApps = repository.getApps().toMutableList()
+                val index = currentApps.indexOfFirst { it.id == app.id }
+                if (index != -1) {
+                    val updatedApp = currentApps[index].copy(versionName = newVersionName)
+                    currentApps[index] = updatedApp
+                    repository.saveApps(currentApps)
+                }
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
     }
 
     fun updateIssue(item: IssueItem) {

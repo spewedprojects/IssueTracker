@@ -80,7 +80,7 @@ data class TrackedApp(
                 id = json.getString("id"),
                 name = json.getString("name"),
                 packageName = if (json.isNull("packageName")) null else json.getString("packageName"),
-                versionName = json.getString("versionName"),
+                versionName = json.optString("versionName", ""),
                 isCustom = json.getBoolean("isCustom"),
                 addedTimestamp = json.optLong("addedTimestamp", System.currentTimeMillis())
             )

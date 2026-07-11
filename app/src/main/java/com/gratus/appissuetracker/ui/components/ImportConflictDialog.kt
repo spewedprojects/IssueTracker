@@ -265,7 +265,7 @@ fun ImportConflictDialogContent(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                                             ) {
-                                                AppLauncherIcon(packageName = app.name, modifier = Modifier.size(32.dp))
+                                                AppLauncherIcon(packageName = app.packageName ?: app.name, modifier = Modifier.size(32.dp))
                                                 Column(modifier = Modifier.weight(1f)) {
                                                     Text(text = app.name, fontWeight = FontWeight.Bold, fontSize = AppFontSizes.small, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                                     Text(text = "v${app.versionName}", fontSize = AppFontSizes.pico, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))

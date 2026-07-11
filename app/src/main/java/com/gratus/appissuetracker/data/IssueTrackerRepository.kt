@@ -46,7 +46,7 @@ class IssueTrackerRepository(private val context: Context) {
                 list.add(TrackedApp.fromJson(jsonArray.getJSONObject(i)))
             }
             // Sort so most recently added apps are first
-            list.sortedByDescending { it.addedTimestamp }
+            list.distinctBy { it.id }.sortedByDescending { it.addedTimestamp }
         } catch (e: Exception) {
             emptyList()
         }

@@ -33,6 +33,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import com.gratus.appissuetracker.ui.MainViewModel
 import com.gratus.appissuetracker.ui.components.FaintBackground
 import com.gratus.appissuetracker.ui.components.ImportConflictDialog
@@ -132,6 +134,12 @@ class MainActivity : ComponentActivity() {
 
                 // Overlay dialog for JSON import conflict customization
                 if (pendingImports.isNotEmpty()) {
+                    val context = LocalContext.current
+                    LaunchedEffect(pendingImports) {
+                        if (installedApps.isEmpty()) {
+                            viewModel.loadInstalledApps(context)
+                        }
+                    }
                     val currentTask = pendingImports.first()
                     ImportConflictDialog(
                         task = currentTask,

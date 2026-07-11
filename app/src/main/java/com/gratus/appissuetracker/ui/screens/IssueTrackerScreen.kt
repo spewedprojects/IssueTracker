@@ -119,7 +119,7 @@ fun IssueTrackerScreen(
     val currentFilter by viewModel.filter.collectAsState()
 
     IssueTrackerScreenContent(
-        appName = app.name,
+        app = app,
         colorSchemeType = colorSchemeType,
         issues = issues,
         searchQuery = searchQuery,
@@ -141,7 +141,7 @@ fun IssueTrackerScreen(
         onToggleIssue = { viewModel.toggleStatus(it) },
         onDeleteIssue = { viewModel.deleteIssue(it) },
         onUpdateIssue = { viewModel.updateIssue(it) },
-        onAddIssue = { title, desc, cat, prio -> viewModel.addIssue(title, desc, cat, prio) },
+        onAddIssue = { title, desc, cat, prio, version -> viewModel.addIssue(title, desc, cat, prio, version) },
         onAddComment = { issue, comment -> viewModel.addComment(issue, comment) }
     )
 }
@@ -149,7 +149,7 @@ fun IssueTrackerScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IssueTrackerScreenContent(
-    appName: String,
+    app: TrackedApp,
     colorSchemeType: String,
     issues: List<IssueItem>,
     searchQuery: String,
@@ -162,7 +162,7 @@ fun IssueTrackerScreenContent(
     onToggleIssue: (IssueItem) -> Unit,
     onDeleteIssue: (IssueItem) -> Unit,
     onUpdateIssue: (IssueItem) -> Unit,
-    onAddIssue: (String, String, String, String) -> Unit,
+    onAddIssue: (String, String, String, String, String?) -> Unit,
     onAddComment: (IssueItem, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -188,7 +188,7 @@ fun IssueTrackerScreenContent(
         containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { Text(appName, fontWeight = FontWeight.Bold, fontSize = AppFontSizes.title) },
+                title = { Text(app.name, fontWeight = FontWeight.Bold, fontSize = AppFontSizes.title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -357,20 +357,22 @@ fun IssueTrackerScreenContent(
         val itemToEdit = issues.find { it.id == itemToEditId }
         IssueAddDialog(
             initialItem = itemToEdit,
+            app = app,
+            issues = issues,
             onDismiss = {
                 showAddDialog = false
                 itemToEditId = null
             },
-            onSave = { title, desc, cat, prio ->
+            onSave = { title, desc, cat, prio, version ->
                 if (itemToEdit != null) {
                     onUpdateIssue(itemToEdit.copy(
                         title = title,
                         description = desc,
                         category = cat,
-                        priority = IssueItem.getPriorityFromLabel(prio) // Use 'prio' instead of 'priority'
+                        priority = IssueItem.getPriorityFromLabel(prio)
                     ))
                 } else {
-                    onAddIssue(title, desc, cat, prio)
+                    onAddIssue(title, desc, cat, prio, version)
                 }
                 showAddDialog = false
                 itemToEditId = null
@@ -838,12 +840,16 @@ fun PriorityBadge(priority: Int) {
 @Composable
 fun IssueAddDialog(
     initialItem: IssueItem?,
+    app: TrackedApp,
+    issues: List<IssueItem>,
     onDismiss: () -> Unit,
-    onSave: (title: String, description: String, category: String, priority: String) -> Unit
+    onSave: (title: String, description: String, category: String, priority: String, appVersion: String?) -> Unit
 ) {
     Dialog(onDismissRequest = onDismiss) {
         IssueAddDialogContent(
             initialItem = initialItem,
+            app = app,
+            issues = issues,
             onDismiss = onDismiss,
             onSave = onSave
         )
@@ -854,8 +860,10 @@ fun IssueAddDialog(
 @Composable
 fun IssueAddDialogContent(
     initialItem: IssueItem?,
+    app: TrackedApp,
+    issues: List<IssueItem>,
     onDismiss: () -> Unit,
-    onSave: (title: String, description: String, category: String, priority: String) -> Unit,
+    onSave: (title: String, description: String, category: String, priority: String, appVersion: String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -864,6 +872,37 @@ fun IssueAddDialogContent(
     var category by rememberSaveable { mutableStateOf(initialItem?.category ?: "Issue") }
     // Convert the Int priority to its String label for the UI state
     var priority by rememberSaveable { mutableStateOf(initialItem?.let { IssueItem.getPriorityLabel(it.priority) } ?: "Normal") }
+
+    val prefilledVersionName = remember {
+        if (initialItem != null) {
+            initialItem.appVersion ?: ""
+        } else {
+            if (app.packageName != null) {
+                try {
+                    context.packageManager.getPackageInfo(app.packageName, 0).versionName ?: app.versionName
+                } catch (e: Exception) {
+                    app.versionName
+                }
+            } else {
+                val lastUsedVersion = issues.firstOrNull { !it.appVersion.isNullOrBlank() }?.appVersion
+                lastUsedVersion ?: app.versionName.ifBlank { "1.0.0" }
+            }
+        }
+    }
+
+    val isVersionEditable = remember {
+        if (initialItem != null) {
+            false
+        } else {
+            if (app.packageName == null) {
+                true
+            } else {
+                app.versionName.isBlank()
+            }
+        }
+    }
+
+    var versionName by rememberSaveable { mutableStateOf(prefilledVersionName) }
     
     val categories = listOf("Issue", "Feature", "Idea")
     val priorities = listOf("Low", "Normal", "High")
@@ -903,6 +942,21 @@ fun IssueAddDialogContent(
                     )
                 )
                 
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = versionName,
+                    onValueChange = { versionName = it },
+                    label = { Text("Version Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = isVersionEditable,
+                    shape = RoundedCornerShape(12.dp),
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Next
+                    )
+                )
+
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 Text("Category", fontSize = AppFontSizes.small)
@@ -1039,8 +1093,8 @@ fun IssueAddDialogContent(
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
-                        onClick = { onSave(title, description.text, category, priority) },
-                        enabled = title.isNotBlank()
+                        onClick = { onSave(title, description.text, category, priority, versionName) },
+                        enabled = title.isNotBlank() && (versionName.isNotBlank() || !isVersionEditable)
                     ) {
                         Text("Save")
                     }
@@ -1125,7 +1179,7 @@ fun IssueCardExpandedPreview() {
 fun IssueTrackerScreenContentPreview() {
     SoftTodoTheme {
         IssueTrackerScreenContent(
-            appName = "Example Tracker App",
+            app = TrackedApp("1", "Example Tracker App", "com.example.tracker", "1.0.0", isCustom = false),
             colorSchemeType = "minimal",
             issues = listOf(
                 IssueItem(
@@ -1160,7 +1214,7 @@ fun IssueTrackerScreenContentPreview() {
             onToggleIssue = {},
             onDeleteIssue = {},
             onUpdateIssue = {},
-            onAddIssue = { _, _, _, _ -> },
+            onAddIssue = { _, _, _, _, _ -> },
             onAddComment = { _, _ -> }
         )
     }
@@ -1173,8 +1227,10 @@ fun IssueAddDialogPreview() {
         Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
             IssueAddDialogContent(
                 initialItem = previewIssues[0],
+                app = TrackedApp("1", "Mock App", "com.mock", "1.0.0", isCustom = false),
+                issues = previewIssues,
                 onDismiss = {},
-                onSave = { _, _, _, _ -> }
+                onSave = { _, _, _, _, _ -> }
             )
         }
     }

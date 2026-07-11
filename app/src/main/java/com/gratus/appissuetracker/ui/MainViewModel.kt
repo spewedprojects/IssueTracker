@@ -141,10 +141,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun addApp(name: String, packageName: String?, versionName: String, isCustom: Boolean) {
         viewModelScope.launch {
+            val trimmedName = name.trim()
+            val exists = if (packageName != null) {
+                _apps.value.any { it.packageName == packageName }
+            } else {
+                _apps.value.any { it.isCustom && it.name.trim().equals(trimmedName, ignoreCase = true) }
+            }
+            if (exists) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(getApplication(), "App \"$trimmedName\" is already tracked!", Toast.LENGTH_SHORT).show()
+                }
+                return@launch
+            }
+
             val id = packageName ?: UUID.randomUUID().toString()
             val newApp = TrackedApp(
                 id = id,
-                name = name,
+                name = trimmedName,
                 packageName = packageName,
                 versionName = versionName,
                 isCustom = isCustom,
