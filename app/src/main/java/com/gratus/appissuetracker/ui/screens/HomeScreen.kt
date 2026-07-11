@@ -18,6 +18,7 @@
 
 package com.gratus.appissuetracker.ui.screens
 
+import android.content.Intent
 import android.widget.Space
 import android.widget.Toast
 import androidx.compose.animation.*
@@ -60,6 +61,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -69,6 +71,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.core.net.toUri
+import com.gratus.appissuetracker.R
 import com.gratus.appissuetracker.data.IssueItem
 import com.gratus.appissuetracker.data.TrackedApp
 import com.gratus.appissuetracker.ui.InstalledAppInfo
@@ -149,6 +153,7 @@ fun HomeScreenContent(
 ) {
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var appToDelete by remember { mutableStateOf<TrackedApp?>(null) }
+    val context = LocalContext.current
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -314,6 +319,23 @@ fun HomeScreenContent(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     lineHeight = 15.sp
                 )
+                Spacer(modifier = Modifier.weight(1f)) // pushes next item to the end
+                IconButton(
+                    onClick = {
+                        val intent = Intent(
+                            Intent.ACTION_VIEW,
+                            "https://github.com/spewedprojects/IssueTracker".toUri()
+                        )
+                        context.startActivity(intent)
+                    },
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.github_mark),
+                        contentDescription = "Source code on GitHub",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp) // Adjusted to a more standard size
+                    )
+                }
             }
         }
     }
@@ -893,12 +915,15 @@ fun AddAppDialog(
     var selectedApp by remember { mutableStateOf<InstalledAppInfo?>(null) }
 
     Dialog(onDismissRequest = onDismiss) {
-        Surface(
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 700.dp),
+                .heightIn(max = 800.dp),
             shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.dialogContainerColor
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.dialogContainerColor,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            )
         ) {
             Column(
                 modifier = Modifier

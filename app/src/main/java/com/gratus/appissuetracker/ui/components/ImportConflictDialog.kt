@@ -100,12 +100,15 @@ fun ImportConflictDialog(
     }
 
     Dialog(onDismissRequest = onDismiss) {
-        Surface(
+        Card(
             modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 560.dp),
+                .fillMaxWidth(0.92f)
+                .heightIn(max = 800.dp),
             shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.dialogContainerColor
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.dialogContainerColor,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            )
         ) {
             Column(
                 modifier = Modifier

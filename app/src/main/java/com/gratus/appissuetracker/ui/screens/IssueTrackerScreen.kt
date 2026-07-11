@@ -77,6 +77,7 @@ import com.gratus.appissuetracker.ui.utils.DateTimeUtils
 import kotlinx.coroutines.delay
 import java.util.Calendar
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.window.DialogProperties
 import com.gratus.appissuetracker.ui.theme.SoftTodoTheme
 
 class IssueTrackerViewModelFactory(
@@ -819,13 +820,16 @@ fun IssueAddDialog(
     val categories = listOf("Issue", "Feature", "Idea")
     val priorities = listOf("Low", "Normal", "High")
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Card(
             modifier = Modifier
-                .fillMaxWidth(0.98f),
+                .fillMaxWidth(0.92f),
             shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.dialogContainerColor,
-            tonalElevation = 0.dp
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.dialogContainerColor,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(
                 modifier = Modifier.padding(24.dp).fillMaxWidth()
@@ -993,6 +997,39 @@ fun IssueAddDialog(
     }
 }
 
+private val previewIssues = listOf(
+    IssueItem(
+        id = "1342",
+        serialNumber = 3,
+        title = "Fix crash on login screen",
+        description = "NullPointerException when tapping login button rapidly.\n- Reproducible on Android 12\n- Need to check login flow thread locks.",
+        category = "Issue",
+        isClosed = false,
+        timestamp = System.currentTimeMillis() - 86400000,
+        comments = listOf(IssueComment("Assigned to dev team"), IssueComment("Adding test logs..."))
+    ),
+    IssueItem(
+        id = "23254",
+        serialNumber = 2,
+        title = "Implement biometric authentication",
+        description = "Allow users to log in using fingerprint or face unlock for faster access.",
+        category = "Feature",
+        isClosed = false,
+        timestamp = System.currentTimeMillis() - 7200000L,
+        comments = emptyList()
+    ),
+    IssueItem(
+        id = "35342",
+        serialNumber = 1,
+        title = "Snooze presets customization",
+        description = "Idea to allow users to edit custom snooze duration presets in settings.",
+        category = "Idea",
+        isClosed = true,
+        timestamp = System.currentTimeMillis() - 172800000L,
+        comments = listOf(IssueComment("Good idea, completed in v2.4"))
+    )
+)
+
 @Preview(showBackground = true)
 @Composable
 fun IssueCardCollapsedPreview() {
@@ -1093,5 +1130,19 @@ fun IssueTrackerScreenContentPreview() {
             onAddIssue = { _, _, _, _ -> },
             onAddComment = { _, _ -> }
         )
+    }
+}
+
+@Preview(showBackground = true, name = "Add/Edit Issue Dialog")
+@Composable
+fun IssueAddDialogPreview() {
+    SoftTodoTheme(colorSchemeType = "minimal", themeMode = "light") {
+        Box(modifier = Modifier.fillMaxSize()) {
+            IssueAddDialog(
+                initialItem = previewIssues[0],
+                onDismiss = {},
+                onSave = { _, _, _, _ -> }
+            )
+        }
     }
 }

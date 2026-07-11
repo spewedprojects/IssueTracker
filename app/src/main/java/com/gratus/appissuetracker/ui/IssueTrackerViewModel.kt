@@ -92,13 +92,25 @@ class IssueTrackerViewModel(application: Application, val app: TrackedApp) : And
 
     fun addIssue(title: String, description: String, category: String, priorityLabel: String) {
         val currentMaxNumber = _issues.value.maxOfOrNull { it.serialNumber } ?: 0
+        
+        val liveVersion = if (!app.isCustom && app.packageName != null) {
+            try {
+                val pm = getApplication<Application>().packageManager
+                pm.getPackageInfo(app.packageName, 0).versionName ?: app.versionName
+            } catch (e: Exception) {
+                app.versionName
+            }
+        } else {
+            app.versionName
+        }
+
         val newItem = IssueItem(
             title = title,
             serialNumber = currentMaxNumber + 1,
             description = description,
             category = category,
             priority = IssueItem.getPriorityFromLabel(priorityLabel), // Convert Label to Int
-            appVersion = app.versionName
+            appVersion = liveVersion
         )
         val updatedList = listOf(newItem) + _issues.value
         _issues.value = updatedList

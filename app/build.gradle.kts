@@ -14,8 +14,8 @@ android {
         applicationId = "com.gratus.appissuetracker"
         minSdk = 27
         targetSdk = 37
-        versionCode = 2
-        versionName = "2.0.0"
+        versionCode = 3
+        versionName = "2.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -41,7 +41,6 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.material)
-    androidTestImplementation(libs.androidx.espresso.core)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
@@ -71,6 +70,7 @@ dependencies {
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.runner)
+    androidTestImplementation(libs.androidx.espresso.core)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.ui.tooling)
