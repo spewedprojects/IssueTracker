@@ -24,6 +24,7 @@ import android.widget.Toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -31,6 +32,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
@@ -62,6 +64,10 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -87,6 +93,8 @@ import com.gratus.appissuetracker.ui.MainViewModel
 import com.gratus.appissuetracker.ui.theme.AppFontSizes
 import com.gratus.appissuetracker.ui.theme.SoftTodoTheme
 import com.gratus.appissuetracker.ui.theme.dialogContainerColor
+import com.gratus.appissuetracker.ui.components.DiscardChangesDialog
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -207,18 +215,19 @@ fun HomeScreenContent(
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            verticalArrangement = Arrangement.SpaceBetween
+        val topPadding = paddingValues.calculateTopPadding()
+        val bottomPadding = paddingValues.calculateBottomPadding()
+        val density = LocalDensity.current
+        val statusBarHeightPx = WindowInsets.statusBars.getTop(density).toFloat()
+
+        Box(
+            modifier = Modifier.fillMaxSize()
         ) {
-            // Main body
             if (apps.isEmpty()) {
                 Box(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
+                        .fillMaxSize()
+                        .padding(top = topPadding, bottom = bottomPadding + 80.dp)
                         .padding(horizontal = 32.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -227,7 +236,7 @@ fun HomeScreenContent(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         EmptyFolderIllustration()
-                        
+
                         Text(
                             text = "No applications added yet",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
@@ -259,7 +268,11 @@ fun HomeScreenContent(
                                 Box(
                                     modifier = Modifier
                                         .size(22.dp)
-                                        .border(1.5.dp, MaterialTheme.colorScheme.onPrimaryContainer, shape = CircleShape),
+                                        .border(
+                                            1.5.dp,
+                                            MaterialTheme.colorScheme.onPrimaryContainer,
+                                            shape = CircleShape
+                                        ),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
@@ -281,10 +294,23 @@ fun HomeScreenContent(
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 160.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = topPadding + 8.dp,
+                        bottom = bottomPadding + 64.dp
+                    ),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .fadingEdges(
+                            statusBarHeightPx = statusBarHeightPx,
+                            density = density,
+                            topPadding = topPadding,
+                            bottomPadding = bottomPadding,
+                            footerHeight = 56.dp
+                        )
                 ) {
                     items(apps, key = { it.id }) { app ->
                         val openCount = openCounts[app.id] ?: 0
@@ -308,11 +334,27 @@ fun HomeScreenContent(
                 }
             }
 
-            // Bottom check footer
+            // Bottom check footer (Drawn exactly ONCE)
             Row(
                 modifier = Modifier
+                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(bottom = 12.dp, top = 8.dp, start = 16.dp, end = 16.dp),
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.7f),
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
+                                MaterialTheme.colorScheme.background
+                            )
+                        )
+                    )
+                    .padding(
+                        bottom = bottomPadding + 12.dp,
+                        top = 32.dp, // Extra top padding for the gradient transition area
+                        start = 16.dp,
+                        end = 16.dp
+                    ),
                 horizontalArrangement = Arrangement.Start,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -333,34 +375,58 @@ fun HomeScreenContent(
                 Box {
                     IconButton(
                         onClick = { showAboutPopup = !showAboutPopup },
+                        modifier = Modifier
+                            .background(
+                                color = if (showAboutPopup) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent,
+                                shape = CircleShape
+                            )
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.github_mark),
                             contentDescription = "About and source code on GitHub",
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp) // Adjusted to a more standard size
+                            modifier = Modifier.size(24.dp)
                         )
                     }
-
-                    if (showAboutPopup) {
-                        val density = LocalDensity.current
-                        Popup(
-                            alignment = Alignment.BottomEnd,
-                            offset = IntOffset(
-                                x = with(density) { 0.dp.roundToPx() },
-                                y = with(density) { -60.dp.roundToPx() }
-                            ),
-                            onDismissRequest = { showAboutPopup = false },
-                            properties = PopupProperties(
-                                focusable = true,
-                                dismissOnClickOutside = true,
-                                dismissOnBackPress = true
-                            )
-                        ) {
-                            AboutPopupContent()
-                        }
-                    }
                 }
+            }
+
+            if (showAboutPopup) {
+                // Invisible scrim to dismiss when tapping outside the card
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            showAboutPopup = false
+                        }
+                )
+                
+                BackHandler {
+                    showAboutPopup = false
+                }
+            }
+
+            AnimatedVisibility(
+                visible = showAboutPopup,
+                enter = fadeIn(animationSpec = tween(durationMillis = 250)) + slideInVertically(
+                    initialOffsetY = { it / 2 },
+                    animationSpec = tween(durationMillis = 250)
+                ),
+                exit = fadeOut(animationSpec = tween(durationMillis = 200)) + slideOutVertically(
+                    targetOffsetY = { it / 2 },
+                    animationSpec = tween(durationMillis = 200)
+                ),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(
+                        end = 16.dp,
+                        bottom = bottomPadding + 68.dp // Above the footer
+                    )
+            ) {
+                AboutPopupContent()
             }
         }
     }
@@ -420,7 +486,11 @@ fun AboutPopupContent(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
                 shape = RoundedCornerShape(20.dp)
-            ),
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { /* Consume click events to prevent dismissal */ },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.dialogContainerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
@@ -836,6 +906,11 @@ fun SearchScreenOverlay(
                     )
                 }
             } else {
+                val groupedResults = remember(searchResults) {
+                    searchResults.groupBy { it.first }
+                        .mapValues { entry -> entry.value.map { it.second } }
+                }
+
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
@@ -843,10 +918,11 @@ fun SearchScreenOverlay(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(searchResults) { (app, issue) ->
-                        GlobalSearchIssueCard(
+                    items(groupedResults.keys.toList()) { app ->
+                        val issues = groupedResults[app] ?: emptyList()
+                        GlobalSearchAppCard(
                             app = app,
-                            issue = issue,
+                            issues = issues,
                             onClick = {
                                 onNavigateToTracker(app)
                             }
@@ -860,9 +936,9 @@ fun SearchScreenOverlay(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GlobalSearchIssueCard(
+fun GlobalSearchAppCard(
     app: TrackedApp,
-    issue: IssueItem,
+    issues: List<IssueItem>,
     onClick: () -> Unit
 ) {
     Card(
@@ -875,8 +951,9 @@ fun GlobalSearchIssueCard(
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // App Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -901,65 +978,102 @@ fun GlobalSearchIssueCard(
                         )
                     }
                 }
-
-                // Issue serial #
-                Text(
-                    text = "#${issue.serialNumber}",
-                    fontSize = AppFontSizes.nano,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
+                
+                // Show count of matching issues
+                Surface(
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.05f),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text(
+                        text = "${issues.size} ${if (issues.size == 1) "match" else "matches"}",
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        fontSize = AppFontSizes.pico,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
-            // Issue Title
-            Text(
-                text = issue.title,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            // Category & Priority badges
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
+            // List of matching issues inside this card
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Category
-                val catColor = when (issue.category) {
-                    "Issue" -> Color(0xFFE57373)
-                    "Feature" -> Color(0xFF81C784)
-                    "Idea" -> Color(0xFF64B5F6)
-                    else -> MaterialTheme.colorScheme.secondary
-                }
-                Surface(
-                    color = catColor.copy(alpha = 0.15f),
-                    shape = RoundedCornerShape(8.dp),
-                    border = BorderStroke(1.dp, catColor.copy(alpha = 0.4f))
-                ) {
-                    Text(
-                        text = "Category: " + issue.category,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 0.dp),
-                        fontSize = AppFontSizes.pico,
-                        fontWeight = FontWeight.Bold,
-                        color = catColor
-                    )
-                }
+                issues.forEachIndexed { index, issue ->
+                    if (index > 0) {
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+                            thickness = 1.dp
+                        )
+                    }
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = issue.title,
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "#${issue.serialNumber}",
+                                fontSize = AppFontSizes.nano,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        }
 
-                // Priority
-                val prioColor = getPriorityColor(issue.priority) // Use your existing helper
-                Surface(
-                    color = prioColor.copy(alpha = 0.15f),
-                    shape = RoundedCornerShape(8.dp),
-                    border = BorderStroke(1.dp, prioColor.copy(alpha = 0.4f))
-                ) {
-                    Text(
-                        text = "Priority: " + IssueItem.getPriorityLabel(issue.priority),
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 0.dp),
-                        fontSize = AppFontSizes.pico,
-                        fontWeight = FontWeight.Bold,
-                        color = prioColor
-                    )
+                        // Category & Priority badges
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Category
+                            val catColor = when (issue.category) {
+                                "Issue" -> Color(0xFFE57373)
+                                "Feature" -> Color(0xFF81C784)
+                                "Idea" -> Color(0xFF64B5F6)
+                                else -> MaterialTheme.colorScheme.secondary
+                            }
+                            Surface(
+                                color = catColor.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, catColor.copy(alpha = 0.4f))
+                            ) {
+                                Text(
+                                    text = "Category: " + issue.category,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 0.dp),
+                                    fontSize = AppFontSizes.pico,
+                                    fontWeight = FontWeight.Bold,
+                                    color = catColor
+                                )
+                            }
+
+                            // Priority
+                            val prioColor = getPriorityColor(issue.priority)
+                            Surface(
+                                color = prioColor.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, prioColor.copy(alpha = 0.4f))
+                            ) {
+                                Text(
+                                    text = "Priority: " + IssueItem.getPriorityLabel(issue.priority),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 0.dp),
+                                    fontSize = AppFontSizes.pico,
+                                    fontWeight = FontWeight.Bold,
+                                    color = prioColor
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1039,12 +1153,36 @@ fun AddAppDialog(
     onAddCustom: (String, String) -> Unit,
     onAddInstalled: (List<InstalledAppInfo>) -> Unit
 ) {
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    var hasChanges by remember { mutableStateOf(false) }
+    var showDiscardConfirmation by remember { mutableStateOf(false) }
+
+    val handleDismissRequest = {
+        if (hasChanges) {
+            showDiscardConfirmation = true
+        } else {
+            onDismiss()
+        }
+    }
+
+    Dialog(onDismissRequest = handleDismissRequest, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         AddAppDialogContent(
             installedApps = installedApps,
-            onDismiss = onDismiss,
+            onDismiss = handleDismissRequest,
             onAddCustom = onAddCustom,
-            onAddInstalled = onAddInstalled
+            onAddInstalled = onAddInstalled,
+            onHasChangesChanged = { hasChanges = it }
+        )
+    }
+
+    if (showDiscardConfirmation) {
+        DiscardChangesDialog(
+            onConfirm = {
+                showDiscardConfirmation = false
+                onDismiss()
+            },
+            onDismiss = {
+                showDiscardConfirmation = false
+            }
         )
     }
 }
@@ -1057,13 +1195,15 @@ fun AddAppDialogContent(
     onAddCustom: (String, String) -> Unit,
     onAddInstalled: (List<InstalledAppInfo>) -> Unit,
     initialActiveTab: Int = 0,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onHasChangesChanged: (Boolean) -> Unit = {}
 ) {
     var activeTab by remember { mutableStateOf(initialActiveTab) } // 0 = Custom, 1 = Installed
     
     // Custom App fields
     var customName by remember { mutableStateOf("") }
     var customVersion by remember { mutableStateOf("1.0.0") }
+
 
     // Installed App fields
     var searchFilter by remember { mutableStateOf("") }
@@ -1078,6 +1218,15 @@ fun AddAppDialogContent(
         }
     }
     var selectedApps by remember { mutableStateOf(emptySet<InstalledAppInfo>()) }
+
+    val hasChanges = remember(customName, customVersion, selectedApps) {
+        customName.isNotEmpty() || customVersion != "1.0.0" || selectedApps.isNotEmpty()
+    }
+
+    LaunchedEffect(hasChanges) {
+        onHasChangesChanged(hasChanges)
+    }
+
         Card(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
@@ -1243,6 +1392,58 @@ fun AddAppDialogContent(
             }
         }
 }
+
+fun Modifier.fadingEdges(
+    statusBarHeightPx: Float,
+    density: androidx.compose.ui.unit.Density,
+    topPadding: androidx.compose.ui.unit.Dp,
+    bottomPadding: androidx.compose.ui.unit.Dp,
+    footerHeight: androidx.compose.ui.unit.Dp = 56.dp
+): Modifier = this
+    .graphicsLayer(alpha = 0.99f)
+    .drawWithContent {
+        drawContent()
+        
+        val H = size.height
+        if (H <= 0f) return@drawWithContent
+        
+        val topPaddingPx = with(density) { topPadding.toPx() }
+        
+        val bottomPaddingPx = with(density) { bottomPadding.toPx() }
+        val footerHeightPx = with(density) { footerHeight.toPx() }
+        
+        // Define top fade range:
+        // y1 (transparent) = topPaddingPx - 16.dp
+        // y2 (opaque) = topPaddingPx + 32.dp
+        val y1 = (topPaddingPx - with(density) { 54.dp.toPx() }).coerceAtLeast(0f)
+        val y2 = topPaddingPx + with(density) { 32.dp.toPx() }
+        
+        // Define bottom fade range:
+        // y3 (opaque) = H - bottomPaddingPx - footerHeightPx - 24.dp
+        // y4 (transparent) = H - bottomPaddingPx
+        val y4 = H - bottomPaddingPx
+        val y3 = H - bottomPaddingPx - footerHeightPx - with(density) { 54.dp.toPx() }
+        
+        // Safeguard to prevent crossover
+        val mid = H / 2f
+        val clampedY2 = y2.coerceAtMost(mid)
+        val clampedY3 = y3.coerceAtLeast(mid)
+        
+        // Build the gradient brush stops
+        val stops = arrayOf(
+            0.0f to Color.Transparent,
+            (y1 / H).coerceIn(0f, 1f) to Color.Transparent,
+            (clampedY2 / H).coerceIn(0f, 1f) to Color.Black,
+            (clampedY3 / H).coerceIn(0f, 1f) to Color.Black,
+            (y4 / H).coerceIn(0f, 1f) to Color.Transparent,
+            1.0f to Color.Transparent
+        )
+        
+        drawRect(
+            brush = Brush.verticalGradient(colorStops = stops),
+            blendMode = BlendMode.DstIn
+        )
+    }
 
 @Preview(showBackground = true)
 @Composable

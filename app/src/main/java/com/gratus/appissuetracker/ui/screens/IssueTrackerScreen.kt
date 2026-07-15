@@ -75,6 +75,8 @@ import com.gratus.appissuetracker.ui.IssueTrackerViewModel
 import com.gratus.appissuetracker.ui.components.parseStyledDescription
 import com.gratus.appissuetracker.ui.theme.AppFontSizes
 import com.gratus.appissuetracker.ui.theme.dialogContainerColor
+import com.gratus.appissuetracker.ui.components.DiscardChangesDialog
+
 import com.gratus.appissuetracker.ui.utils.DateTimeUtils
 import kotlinx.coroutines.delay
 import java.util.Calendar
@@ -845,13 +847,37 @@ fun IssueAddDialog(
     onDismiss: () -> Unit,
     onSave: (title: String, description: String, category: String, priority: String, appVersion: String?) -> Unit
 ) {
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    var hasChanges by remember { mutableStateOf(false) }
+    var showDiscardConfirmation by remember { mutableStateOf(false) }
+
+    val handleDismissRequest = {
+        if (hasChanges) {
+            showDiscardConfirmation = true
+        } else {
+            onDismiss()
+        }
+    }
+
+    Dialog(onDismissRequest = handleDismissRequest, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         IssueAddDialogContent(
             initialItem = initialItem,
             app = app,
             issues = issues,
-            onDismiss = onDismiss,
-            onSave = onSave
+            onDismiss = handleDismissRequest,
+            onSave = onSave,
+            onHasChangesChanged = { hasChanges = it }
+        )
+    }
+
+    if (showDiscardConfirmation) {
+        DiscardChangesDialog(
+            onConfirm = {
+                showDiscardConfirmation = false
+                onDismiss()
+            },
+            onDismiss = {
+                showDiscardConfirmation = false
+            }
         )
     }
 }
@@ -864,7 +890,8 @@ fun IssueAddDialogContent(
     issues: List<IssueItem>,
     onDismiss: () -> Unit,
     onSave: (title: String, description: String, category: String, priority: String, appVersion: String?) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onHasChangesChanged: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     var title by rememberSaveable { mutableStateOf(initialItem?.title ?: "") }
@@ -904,6 +931,23 @@ fun IssueAddDialogContent(
 
     var versionName by rememberSaveable { mutableStateOf(prefilledVersionName) }
     
+    val initialTitle = remember { initialItem?.title ?: "" }
+    val initialDescription = remember { initialItem?.description ?: "" }
+    val initialCategory = remember { initialItem?.category ?: "Issue" }
+    val initialPriority = remember { initialItem?.let { IssueItem.getPriorityLabel(it.priority) } ?: "Normal" }
+
+    val hasChanges = remember(title, description.text, category, priority, versionName) {
+        title != initialTitle ||
+        description.text != initialDescription ||
+        category != initialCategory ||
+        priority != initialPriority ||
+        versionName != prefilledVersionName
+    }
+
+    LaunchedEffect(hasChanges) {
+        onHasChangesChanged(hasChanges)
+    }
+
     val categories = listOf("Issue", "Feature", "Idea")
     val priorities = listOf("Low", "Normal", "High")
 

@@ -67,14 +67,38 @@ fun ImportConflictDialog(
     ) -> Unit,
     initialTargetOption: Int = 0
 ) {
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    var hasChanges by remember { mutableStateOf(false) }
+    var showDiscardConfirmation by remember { mutableStateOf(false) }
+
+    val handleDismissRequest = {
+        if (hasChanges) {
+            showDiscardConfirmation = true
+        } else {
+            onDismiss()
+        }
+    }
+
+    Dialog(onDismissRequest = handleDismissRequest, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         ImportConflictDialogContent(
             task = task,
             trackedApps = trackedApps,
             installedApps = installedApps,
-            onDismiss = onDismiss,
+            onDismiss = handleDismissRequest,
             onImport = onImport,
-            initialTargetOption = initialTargetOption
+            initialTargetOption = initialTargetOption,
+            onHasChangesChanged = { hasChanges = it }
+        )
+    }
+
+    if (showDiscardConfirmation) {
+        DiscardChangesDialog(
+            onConfirm = {
+                showDiscardConfirmation = false
+                onDismiss()
+            },
+            onDismiss = {
+                showDiscardConfirmation = false
+            }
         )
     }
 }
@@ -93,7 +117,9 @@ fun ImportConflictDialogContent(
         selectedTrackedApp: TrackedApp?,
         selectedInstalledApp: InstalledAppInfo?
     ) -> Unit,
-    initialTargetOption: Int = 0
+    initialTargetOption: Int = 0,
+    modifier: Modifier = Modifier,
+    onHasChangesChanged: (Boolean) -> Unit = {}
 ) {
     var targetOption by remember { mutableStateOf(initialTargetOption) } // 0 = New Custom, 1 = Existing, 2 = Installed
     
@@ -117,6 +143,18 @@ fun ImportConflictDialogContent(
 
     var selectedTrackedApp by remember { mutableStateOf<TrackedApp?>(null) }
     var selectedInstalledApp by remember { mutableStateOf<InstalledAppInfo?>(null) }
+
+    val hasChanges = remember(targetOption, customName, customVersion, selectedTrackedApp, selectedInstalledApp) {
+        targetOption != initialTargetOption ||
+        customName != defaultAppName ||
+        customVersion != "1.0.0" ||
+        selectedTrackedApp != null ||
+        selectedInstalledApp != null
+    }
+
+    LaunchedEffect(hasChanges) {
+        onHasChangesChanged(hasChanges)
+    }
 
     var trackedSearchQuery by remember { mutableStateOf("") }
     var installedSearchQuery by remember { mutableStateOf("") }
