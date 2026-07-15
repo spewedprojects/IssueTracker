@@ -845,7 +845,7 @@ fun IssueAddDialog(
     onDismiss: () -> Unit,
     onSave: (title: String, description: String, category: String, priority: String, appVersion: String?) -> Unit
 ) {
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         IssueAddDialogContent(
             initialItem = initialItem,
             app = app,

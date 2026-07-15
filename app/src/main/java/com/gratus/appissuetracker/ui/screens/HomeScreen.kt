@@ -70,10 +70,14 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.core.net.toUri
 import com.gratus.appissuetracker.R
 import com.gratus.appissuetracker.data.IssueItem
@@ -157,6 +161,7 @@ fun HomeScreenContent(
     onEnterSearch: () -> Unit
 ) {
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
+    var showAboutPopup by rememberSaveable { mutableStateOf(false) }
     var appToDelete by remember { mutableStateOf<TrackedApp?>(null) }
     val context = LocalContext.current
 
@@ -325,21 +330,36 @@ fun HomeScreenContent(
                     lineHeight = 15.sp
                 )
                 Spacer(modifier = Modifier.weight(1f)) // pushes next item to the end
-                IconButton(
-                    onClick = {
-                        val intent = Intent(
-                            Intent.ACTION_VIEW,
-                            "https://github.com/spewedprojects/IssueTracker".toUri()
+                Box {
+                    IconButton(
+                        onClick = { showAboutPopup = !showAboutPopup },
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.github_mark),
+                            contentDescription = "About and source code on GitHub",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp) // Adjusted to a more standard size
                         )
-                        context.startActivity(intent)
-                    },
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.github_mark),
-                        contentDescription = "Source code on GitHub",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp) // Adjusted to a more standard size
-                    )
+                    }
+
+                    if (showAboutPopup) {
+                        val density = LocalDensity.current
+                        Popup(
+                            alignment = Alignment.BottomEnd,
+                            offset = IntOffset(
+                                x = with(density) { 0.dp.roundToPx() },
+                                y = with(density) { -60.dp.roundToPx() }
+                            ),
+                            onDismissRequest = { showAboutPopup = false },
+                            properties = PopupProperties(
+                                focusable = true,
+                                dismissOnClickOutside = true,
+                                dismissOnBackPress = true
+                            )
+                        ) {
+                            AboutPopupContent()
+                        }
+                    }
                 }
             }
         }
@@ -385,6 +405,98 @@ fun HomeScreenContent(
             shape = RoundedCornerShape(24.dp),
             containerColor = MaterialTheme.colorScheme.dialogContainerColor
         )
+    }
+}
+
+@Composable
+fun AboutPopupContent(
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    Card(
+        modifier = modifier
+            .fillMaxWidth(0.55f)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
+                shape = RoundedCornerShape(20.dp)
+            ),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.dialogContainerColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "About",
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "A simplified Issue Tracking interface that works completely offline.",
+                fontSize = AppFontSizes.small,
+                color = MaterialTheme.colorScheme.onSurface,
+                lineHeight = 20.sp
+            )
+            Spacer(Modifier.height(16.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable {
+                        val intent = Intent(
+                            Intent.ACTION_VIEW,
+                            "https://github.com/spewedprojects".toUri()
+                        )
+                        context.startActivity(intent)
+                    }
+                ) {
+                    Text(
+                        text = "Maintainer – Spewed Projects",
+                        fontSize = AppFontSizes.small,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Default.Link,
+                        contentDescription = "Open maintainer page",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.08f))
+                        .clickable {
+                            val intent = Intent(
+                                Intent.ACTION_VIEW,
+                                "https://github.com/spewedprojects/IssueTracker".toUri()
+                            )
+                            context.startActivity(intent)
+                        }
+                        .padding(horizontal = 14.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Code,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = "Source Code",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = AppFontSizes.small
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -1284,6 +1396,16 @@ fun AddAppDialogInstalledTabPreview() {
                 onAddInstalled = {},
                 initialActiveTab = 1
             )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "About Popup")
+@Composable
+fun AboutPopupPreview() {
+    SoftTodoTheme {
+        Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
+            AboutPopupContent()
         }
     }
 }
