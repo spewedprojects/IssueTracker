@@ -23,7 +23,7 @@ Very narrow usecase: to add app-wise issues in single place.
 - Module metadata such as app name, package name, version name
 
 ## Screenshots
-For detailed Screenshots go here - [Screenshots](https://www.github.com/spewedprojects/IssueTracker/screenshots_detailed.md)
+For detailed Screenshots go here - [Screenshots](screenshots_detailed.md)
 <table>
   <tr>
     <td>Home</td>
