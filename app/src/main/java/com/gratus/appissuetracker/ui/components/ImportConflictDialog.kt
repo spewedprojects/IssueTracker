@@ -43,7 +43,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.gratus.appissuetracker.data.TrackedApp
 import com.gratus.appissuetracker.ui.InstalledAppInfo
 import com.gratus.appissuetracker.ui.MainViewModel
-import com.gratus.appissuetracker.ui.screens.AppLauncherIcon
+import com.gratus.appissuetracker.ui.components.home.AppLauncherIcon
 import com.gratus.appissuetracker.ui.theme.AppFontSizes
 import com.gratus.appissuetracker.ui.theme.dialogContainerColor
 
