@@ -1,5 +1,5 @@
 # Gradle files
-/.gradle/
+.gradle/
 build/
 
 # Local configuration file (sdk path, etc)
@@ -13,7 +13,7 @@ captures/
 .externalNativeBuild/
 .cxx/
 *.aab
-/.kotlin/
+.kotlin/
 
 output-metadata.json
 /app/release/baselineProfiles
@@ -31,10 +31,10 @@ render.experimental.xml
 
 # Google Services (e.g. APIs or Firebase) and Gemini
 google-services.json
-/.artifacts
+.artifacts/
 
 # Android Profiling
 *.hprof
 
 # My miscellaneous files
-/misc_files
+misc_files/
