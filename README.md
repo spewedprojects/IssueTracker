@@ -32,6 +32,7 @@ For detailed Screenshots go here - [Screenshots](https://www.github.com/spewedpr
   </tr>
   <tr>
     <td>Global Search</td>
+    <td><img src="docs/screenshots/globalSearch/globalsearch_02.png" width="100%"></td>
     <td><img src="docs/screenshots/globalSearch/globalsearch_01.png" width="100%"></td>
   </tr>
   <tr>
@@ -41,11 +42,13 @@ For detailed Screenshots go here - [Screenshots](https://www.github.com/spewedpr
   </tr>
   <tr>
     <td>Settings</td>
+    <td><img src="docs/screenshots/settings/settings_00.png" width="100%"></td>
     <td><img src="docs/screenshots/settings/settings_03.png" width="100%"></td>
-    <td><img src="docs/screenshots/settings/settings_05.png" width="100%"></td>
   </tr>
 </table>
 
 ## Getting Started
+
+Download from [GitHub Releases](https://www.github.com/spewedprojects/IssueTracker/releases/latest)
 
 Start with adding an application.

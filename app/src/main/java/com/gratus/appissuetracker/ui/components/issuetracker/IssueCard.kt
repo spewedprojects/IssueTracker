@@ -19,9 +19,11 @@
 package com.gratus.appissuetracker.ui.components.issuetracker
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -82,15 +84,38 @@ fun IssueCard(
     onDelete: () -> Unit,
     onEdit: () -> Unit,
     onAddComment: (String) -> Unit,
-    initialExpanded: Boolean = false
+    initialExpanded: Boolean = false,
+    highlighted: Boolean = false
 ) {
     var expanded by remember { mutableStateOf(initialExpanded) }
     val rotation by animateFloatAsState(targetValue = if (expanded) 180f else 0f)
     val context = LocalContext.current
 
+    var isEffectivelyHighlighted by remember { mutableStateOf(false) }
+
+    // Auto-expand card if highlighted and show visual highlight for 4 seconds
+    LaunchedEffect(highlighted) {
+        if (highlighted) {
+            isEffectivelyHighlighted = true
+            expanded = true
+            delay(4000)
+            isEffectivelyHighlighted = false
+        } else {
+            isEffectivelyHighlighted = false
+        }
+    }
+
+    // Animate border stroke width and color when effectively highlighted
+    val targetBorderWidth = if (isEffectivelyHighlighted) 2.dp else 1.dp
+    val targetBorderColor = if (isEffectivelyHighlighted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+
+    val borderWidth by animateDpAsState(targetValue = targetBorderWidth, label = "borderWidth")
+    val borderColor by animateColorAsState(targetValue = targetBorderColor, label = "borderColor")
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
             .clickable { expanded = !expanded }
             .animateContentSize(
                 animationSpec = spring(
@@ -101,14 +126,15 @@ fun IssueCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+        border = BorderStroke(borderWidth, borderColor),
         shape = RoundedCornerShape(20.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(16.dp))
+        {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                //horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -138,6 +164,7 @@ fun IssueCard(
                     )
                 }
 
+                Spacer(Modifier.width(12.dp))
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -234,6 +261,7 @@ fun IssueCard(
                         }
                     }
                 }
+                Spacer(Modifier.width(4.dp))
                 Column(horizontalAlignment = Alignment.End) {
                     PriorityBadge(priority = issue.priority)
                     Spacer(modifier = Modifier.height(8.dp))

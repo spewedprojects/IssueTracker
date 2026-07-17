@@ -56,15 +56,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _settingsColorScheme = MutableStateFlow(sharedPrefs.getString("color_scheme", "minimal") ?: "minimal")
     val settingsColorScheme: StateFlow<String> = _settingsColorScheme.asStateFlow()
 
+    private val _settingsSortMode = MutableStateFlow(sharedPrefs.getString("sort_mode", "added_date") ?: "added_date")
+    val settingsSortMode: StateFlow<String> = _settingsSortMode.asStateFlow()
+
     private val _colorfulHueShift = MutableStateFlow(sharedPrefs.getFloat("colorful_hue_shift", 0f))
     val colorfulHueShift: StateFlow<Float> = _colorfulHueShift.asStateFlow()
 
     private val _colorfulSatScale = MutableStateFlow(sharedPrefs.getFloat("colorful_sat_scale", 1f))
     val colorfulSatScale: StateFlow<Float> = _colorfulSatScale.asStateFlow()
-
-    // Tracked Apps List
-    private val _apps = MutableStateFlow<List<TrackedApp>>(emptyList())
-    val apps: StateFlow<List<TrackedApp>> = _apps.asStateFlow()
 
     // Open Issues Count for each app
     private val _openIssuesCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
@@ -73,6 +72,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Total Issues Count for each app
     private val _totalIssuesCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
     val totalIssuesCounts: StateFlow<Map<String, Int>> = _totalIssuesCounts.asStateFlow()
+
+    // Tracked Apps List
+    private val _apps = MutableStateFlow<List<TrackedApp>>(emptyList())
+    // Combine raw apps flow with sorting settings and issue counts to sort dynamically
+    val apps: StateFlow<List<TrackedApp>> = combine(
+        _apps,
+        _settingsSortMode,
+        _openIssuesCounts,
+        _totalIssuesCounts
+    ) { appsList, sortMode, openCounts, totalCounts ->
+        when (sortMode) {
+            "highest_issues" -> appsList.sortedByDescending { totalCounts[it.id] ?: 0 }
+            "lowest_issues" -> appsList.sortedBy { totalCounts[it.id] ?: 0 }
+            "highest_open_issues" -> appsList.sortedByDescending { openCounts[it.id] ?: 0 }
+            "lowest_open_issues" -> appsList.sortedBy { openCounts[it.id] ?: 0 }
+            "alphabetical" -> appsList.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+            "added_date" -> appsList.sortedByDescending { it.addedTimestamp }
+            else -> appsList.sortedByDescending { it.addedTimestamp }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Search history States
+    private val _searchHistory = MutableStateFlow<List<String>>(emptyList())
+    val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
 
     // User Installed Apps (cached for add-app dialog)
     private val _installedApps = MutableStateFlow<List<InstalledAppInfo>>(emptyList())
@@ -97,6 +120,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         loadApps()
+        loadSearchHistory()
     }
 
     fun setTheme(theme: String) {
@@ -117,6 +141,57 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setColorfulSatScale(value: Float) {
         _colorfulSatScale.value = value
         sharedPrefs.edit().putFloat("colorful_sat_scale", value).apply()
+    }
+
+    fun setSortMode(mode: String) {
+        _settingsSortMode.value = mode
+        sharedPrefs.edit().putString("sort_mode", mode).apply()
+    }
+
+    private fun loadSearchHistory() {
+        val historyJson = sharedPrefs.getString("search_history", "[]") ?: "[]"
+        try {
+            val jsonArray = JSONArray(historyJson)
+            val list = mutableListOf<String>()
+            for (i in 0 until jsonArray.length()) {
+                list.add(jsonArray.getString(i))
+            }
+            _searchHistory.value = list
+        } catch (e: Exception) {
+            _searchHistory.value = emptyList()
+        }
+    }
+
+    fun saveSearchToHistory(query: String) {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) return
+        
+        val current = _searchHistory.value.toMutableList()
+        current.remove(trimmed)
+        current.add(0, trimmed)
+        val updated = current.take(5)
+        _searchHistory.value = updated
+        
+        try {
+            val jsonArray = JSONArray()
+            updated.forEach { jsonArray.put(it) }
+            sharedPrefs.edit().putString("search_history", jsonArray.toString()).apply()
+        } catch (e: Exception) {
+            // Ignore
+        }
+    }
+
+    fun deleteSearchFromHistory(query: String) {
+        val updated = _searchHistory.value.filter { it != query }
+        _searchHistory.value = updated
+        
+        try {
+            val jsonArray = JSONArray()
+            updated.forEach { jsonArray.put(it) }
+            sharedPrefs.edit().putString("search_history", jsonArray.toString()).apply()
+        } catch (e: Exception) {
+            // Ignore
+        }
     }
 
     fun loadApps() {

@@ -35,6 +35,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gratus.appissuetracker.ui.theme.AppFontSizes
+import androidx.compose.ui.tooling.preview.Preview
+import com.gratus.appissuetracker.ui.theme.SoftTodoTheme
 
 @Composable
 fun AestheticsSettingsCard(
@@ -385,6 +387,167 @@ fun BackupSettingsCard(
                     Text("Import & Restore Backup")
                 }
             }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AestheticsSettingsCardMinimalPreview() {
+    SoftTodoTheme(colorSchemeType = "minimal", themeMode = "light") {
+        Box(modifier = Modifier.padding(16.dp)) {
+            AestheticsSettingsCard(
+                activeTheme = "light",
+                activeScheme = "minimal",
+                colorfulHueShift = 0f,
+                colorfulSatScale = 1f,
+                onThemeChange = {},
+                onColorSchemeChange = {},
+                onColorfulHueShiftChange = {},
+                onColorfulSatScaleChange = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AestheticsSettingsCardColorfulPreview() {
+    SoftTodoTheme(colorSchemeType = "colorful", themeMode = "dark") {
+        Box(modifier = Modifier.padding(16.dp)) {
+            AestheticsSettingsCard(
+                activeTheme = "dark",
+                activeScheme = "colorful",
+                colorfulHueShift = 15f,
+                colorfulSatScale = 1.2f,
+                onThemeChange = {},
+                onColorSchemeChange = {},
+                onColorfulHueShiftChange = {},
+                onColorfulSatScaleChange = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ColorfulCustomizerPanelPreview() {
+    SoftTodoTheme(colorSchemeType = "colorful", themeMode = "light") {
+        Box(modifier = Modifier.padding(16.dp)) {
+            ColorfulCustomizerPanel(
+                colorfulHueShift = 10f,
+                colorfulSatScale = 1.1f,
+                onColorfulHueShiftChange = {},
+                onColorfulSatScaleChange = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun BackupSettingsCardPreview() {
+    SoftTodoTheme {
+        Box(modifier = Modifier.padding(16.dp)) {
+            BackupSettingsCard(
+                onExportBackups = {},
+                onImportBackups = {}
+            )
+        }
+    }
+}
+
+@Composable
+fun SortingSettingsCard(
+    activeSortMode: String,
+    onSortModeChange: (String) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "Sorting Settings",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "App List Sorting Mode",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                val sortModes = listOf(
+                    Pair("added_date", "Date Added"),
+                    Pair("alphabetical", "Alphabetical"),
+                    Pair("highest_issues", "Highest Issues"),
+                    Pair("lowest_issues", "Lowest Issues"),
+                    Pair("highest_open_issues", "Highest Open"),
+                    Pair("lowest_open_issues", "Lowest Open")
+                )
+
+                for (i in sortModes.indices step 2) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        for (j in 0..1) {
+                            if (i + j < sortModes.size) {
+                                val (mode, label) = sortModes[i + j]
+                                val isSelected = activeSortMode == mode
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(
+                                            if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                        )
+                                        .border(
+                                            1.dp,
+                                            if (isSelected) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
+                                            RoundedCornerShape(8.dp)
+                                        )
+                                        .clickable { onSortModeChange(mode) }
+                                        .padding(vertical = 12.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = label,
+                                        fontSize = AppFontSizes.small,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                                                else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SortingSettingsCardPreview() {
+    SoftTodoTheme {
+        Box(modifier = Modifier.padding(16.dp)) {
+            SortingSettingsCard(
+                activeSortMode = "added_date",
+                onSortModeChange = {}
+            )
         }
     }
 }

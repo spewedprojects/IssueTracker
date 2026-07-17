@@ -60,12 +60,13 @@ import com.gratus.appissuetracker.ui.theme.AppFontSizes
 import com.gratus.appissuetracker.ui.theme.SoftTodoTheme
 import com.gratus.appissuetracker.ui.theme.dialogContainerColor
 import com.gratus.appissuetracker.ui.components.home.*
+import com.gratus.appissuetracker.ui.components.DeleteConfirmationDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: MainViewModel,
-    onNavigateToTracker: (TrackedApp) -> Unit,
+    onNavigateToTracker: (TrackedApp, String?) -> Unit,
     onNavigateToSettings: () -> Unit
 ) {
     val context = LocalContext.current
@@ -75,6 +76,7 @@ fun HomeScreen(
     val searchQuery by viewModel.globalSearchQuery.collectAsState()
     val searchResults by viewModel.globalSearchResults.collectAsState()
     val installedAppsList by viewModel.installedApps.collectAsState()
+    val searchHistory by viewModel.searchHistory.collectAsState()
 
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
 
@@ -87,13 +89,21 @@ fun HomeScreen(
         SearchScreenOverlay(
             searchQuery = searchQuery,
             searchResults = searchResults,
+            searchHistory = searchHistory,
             onSearchQueryChange = { viewModel.setGlobalSearchQuery(it) },
             onClearSearch = { viewModel.setGlobalSearchQuery("") },
             onExitSearch = {
                 isSearchActive = false
                 viewModel.setGlobalSearchQuery("")
             },
-            onNavigateToTracker = onNavigateToTracker
+            onNavigateToTracker = { app, issueId ->
+                if (searchQuery.isNotBlank()) {
+                    viewModel.saveSearchToHistory(searchQuery)
+                }
+                onNavigateToTracker(app, issueId)
+            },
+            onDeleteHistoryItem = { viewModel.deleteSearchFromHistory(it) },
+            onSaveSearchQuery = { viewModel.saveSearchToHistory(it) }
         )
     } else {
         HomeScreenContent(
@@ -111,7 +121,7 @@ fun HomeScreen(
             },
             onDeleteApp = { viewModel.deleteApp(it) },
             onLoadInstalledApps = { viewModel.loadInstalledApps(context) },
-            onNavigateToTracker = onNavigateToTracker,
+            onNavigateToTracker = { app -> onNavigateToTracker(app, null) },
             onNavigateToSettings = onNavigateToSettings,
             onEnterSearch = { isSearchActive = true }
         )
@@ -412,27 +422,14 @@ fun HomeScreenContent(
 
     // Delete App Confirmation Dialog
     if (appToDelete != null) {
-        AlertDialog(
-            onDismissRequest = { appToDelete = null },
-            title = { Text("Delete Tracker") },
-            text = { Text("Are you sure you want to remove '${appToDelete?.name}'? This will permanently delete all its tracked issues.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        appToDelete?.let { onDeleteApp(it) }
-                        appToDelete = null
-                    }
-                ) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
-                }
+        DeleteConfirmationDialog(
+            title = "Delete Project",
+            message = "Are you sure you want to remove '${appToDelete?.name}'? This will permanently delete all its tracked issues.",
+            onConfirm = {
+                appToDelete?.let { onDeleteApp(it) }
+                appToDelete = null
             },
-            dismissButton = {
-                TextButton(onClick = { appToDelete = null }) {
-                    Text("Cancel")
-                }
-            },
-            shape = RoundedCornerShape(24.dp),
-            containerColor = MaterialTheme.colorScheme.dialogContainerColor
+            onDismiss = { appToDelete = null }
         )
     }
 }

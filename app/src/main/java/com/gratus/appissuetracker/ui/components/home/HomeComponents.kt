@@ -72,6 +72,7 @@ fun AppGridCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
             .aspectRatio(0.95f)
             .combinedClickable(
                 onClick = onClick,

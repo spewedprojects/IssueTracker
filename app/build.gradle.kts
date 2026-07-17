@@ -15,8 +15,8 @@ android {
         applicationId = "com.gratus.appissuetracker"
         minSdk = 27
         targetSdk = 37
-        versionCode = 8
-        versionName = "2.4.1"
+        versionCode = 9
+        versionName = "2.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -34,6 +34,19 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach { output ->
+            val baseName = if (variant.buildType == "debug") {
+                "IssueTracker-${variant.buildType}"
+            } else {
+                "IssueTracker_v${android.defaultConfig.versionName}-${variant.buildType}"
+            }
+            output.outputFileName.set("$baseName.apk")
+        }
     }
 }
 

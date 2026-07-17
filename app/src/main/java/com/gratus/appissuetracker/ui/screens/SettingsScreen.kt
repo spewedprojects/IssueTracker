@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.gratus.appissuetracker.ui.MainViewModel
+import com.gratus.appissuetracker.ui.components.home.fadingEdges
 import com.gratus.appissuetracker.ui.theme.SoftTodoTheme
 import com.gratus.appissuetracker.ui.components.settings.*
 
@@ -49,6 +50,7 @@ fun SettingsScreen(
     val activeScheme by viewModel.settingsColorScheme.collectAsState()
     val colorfulHueShift by viewModel.colorfulHueShift.collectAsState()
     val colorfulSatScale by viewModel.colorfulSatScale.collectAsState()
+    val activeSortMode by viewModel.settingsSortMode.collectAsState()
 
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
@@ -69,10 +71,12 @@ fun SettingsScreen(
         activeScheme = activeScheme,
         colorfulHueShift = colorfulHueShift,
         colorfulSatScale = colorfulSatScale,
+        activeSortMode = activeSortMode,
         onThemeChange = { viewModel.setTheme(it) },
         onColorSchemeChange = { viewModel.setColorScheme(it) },
         onColorfulHueShiftChange = { viewModel.setColorfulHueShift(it) },
         onColorfulSatScaleChange = { viewModel.setColorfulSatScale(it) },
+        onSortModeChange = { viewModel.setSortMode(it) },
         onExportBackups = { viewModel.exportAllIssues(context) },
         onImportBackups = {
             try {
@@ -92,10 +96,12 @@ fun SettingsScreenContent(
     activeScheme: String,
     colorfulHueShift: Float,
     colorfulSatScale: Float,
+    activeSortMode: String,
     onThemeChange: (String) -> Unit,
     onColorSchemeChange: (String) -> Unit,
     onColorfulHueShiftChange: (Float) -> Unit,
     onColorfulSatScaleChange: (Float) -> Unit,
+    onSortModeChange: (String) -> Unit,
     onExportBackups: () -> Unit,
     onImportBackups: () -> Unit,
     onBack: () -> Unit
@@ -123,6 +129,11 @@ fun SettingsScreenContent(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            SortingSettingsCard(
+                activeSortMode = activeSortMode,
+                onSortModeChange = onSortModeChange
+            )
+
             AestheticsSettingsCard(
                 activeTheme = activeTheme,
                 activeScheme = activeScheme,
@@ -151,10 +162,12 @@ fun SettingsScreenMinimalPreview() {
             activeScheme = "minimal",
             colorfulHueShift = 0f,
             colorfulSatScale = 1f,
+            activeSortMode = "added_date",
             onThemeChange = {},
             onColorSchemeChange = {},
             onColorfulHueShiftChange = {},
             onColorfulSatScaleChange = {},
+            onSortModeChange = {},
             onExportBackups = {},
             onImportBackups = {},
             onBack = {}
@@ -171,10 +184,12 @@ fun SettingsScreenColorfulDarkPreview() {
             activeScheme = "colorful",
             colorfulHueShift = 10f,
             colorfulSatScale = 1.1f,
+            activeSortMode = "added_date",
             onThemeChange = {},
             onColorSchemeChange = {},
             onColorfulHueShiftChange = {},
             onColorfulSatScaleChange = {},
+            onSortModeChange = {},
             onExportBackups = {},
             onImportBackups = {},
             onBack = {}
@@ -191,10 +206,12 @@ fun SettingsScreenSimplePreview() {
             activeScheme = "simple",
             colorfulHueShift = 0f,
             colorfulSatScale = 1f,
+            activeSortMode = "added_date",
             onThemeChange = {},
             onColorSchemeChange = {},
             onColorfulHueShiftChange = {},
             onColorfulSatScaleChange = {},
+            onSortModeChange = {},
             onExportBackups = {},
             onImportBackups = {},
             onBack = {}

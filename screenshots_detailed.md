@@ -39,7 +39,7 @@
     <td>Search Results</td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/globalSearch/globalsearch_03.png" width="100%"></td>
+    <td><img src="docs/screenshots/globalSearch/globalsearch_02.png" width="100%"></td>
     <td><img src="docs/screenshots/globalSearch/globalsearch_01.png" width="100%"></td>
   </tr>
 </table>
@@ -47,6 +47,7 @@
 #### Settings Screen
 <table>
   <tr align="center">
+    <td>Sort Mode</td>
     <td>Theme adjust</td>
     <td>Custom colors</td>
     <td>Restore and Backup</td>
@@ -54,6 +55,7 @@
     <td>Import conflict dialog 2</td>
   </tr>
   <tr>
+    <td><img src="docs/screenshots/settings/settings_00.png" width="100%"></td>
     <td><img src="docs/screenshots/settings/settings_01.png" width="100%"></td>
     <td><img src="docs/screenshots/settings/settings_02.png" width="100%"></td>
     <td><img src="docs/screenshots/settings/settings_03.png" width="100%"></td>

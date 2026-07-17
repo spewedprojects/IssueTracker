@@ -24,15 +24,19 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -53,10 +57,13 @@ import com.gratus.appissuetracker.ui.theme.SoftTodoTheme
 fun SearchScreenOverlay(
     searchQuery: String,
     searchResults: List<Pair<TrackedApp, IssueItem>>,
+    searchHistory: List<String>,
     onSearchQueryChange: (String) -> Unit,
     onClearSearch: () -> Unit,
     onExitSearch: () -> Unit,
-    onNavigateToTracker: (TrackedApp) -> Unit
+    onNavigateToTracker: (TrackedApp, String?) -> Unit,
+    onDeleteHistoryItem: (String) -> Unit,
+    onSaveSearchQuery: (String) -> Unit
 ) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
@@ -100,18 +107,95 @@ fun SearchScreenOverlay(
                     keyboardOptions = KeyboardOptions(
                         imeAction = ImeAction.Search,
                         capitalization = KeyboardCapitalization.Sentences
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onSearch = {
+                            if (searchQuery.isNotBlank()) {
+                                onSaveSearchQuery(searchQuery)
+                            }
+                        }
                     )
                 )
             }
 
             // Results list
             if (searchQuery.isEmpty()) {
-                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "Type to search all issues...",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                if (searchHistory.isNotEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Recent Searches",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        
+                        searchHistory.forEach { historyQuery ->
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { onSearchQueryChange(historyQuery) },
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.08f))
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.History,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Text(
+                                            text = historyQuery,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                    
+                                    IconButton(
+                                        onClick = { onDeleteHistoryItem(historyQuery) },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Delete",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "Type to search all issues...",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
             } else if (searchResults.isEmpty()) {
                 Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -139,8 +223,11 @@ fun SearchScreenOverlay(
                         GlobalSearchAppCard(
                             app = app,
                             issues = issues,
-                            onClick = {
-                                onNavigateToTracker(app)
+                            onAppClick = {
+                                onNavigateToTracker(app, null)
+                            },
+                            onIssueClick = { issue ->
+                                onNavigateToTracker(app, issue.id)
                             }
                         )
                     }
@@ -155,12 +242,12 @@ fun SearchScreenOverlay(
 fun GlobalSearchAppCard(
     app: TrackedApp,
     issues: List<IssueItem>,
-    onClick: () -> Unit
+    onAppClick: () -> Unit,
+    onIssueClick: (IssueItem) -> Unit
 ) {
     Card(
         modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
+            .fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
@@ -171,7 +258,11 @@ fun GlobalSearchAppCard(
         ) {
             // App Header
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onAppClick() }
+                    .padding(vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -223,7 +314,11 @@ fun GlobalSearchAppCard(
                     }
                     Column(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onIssueClick(issue) }
+                            .padding(8.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -330,10 +425,13 @@ fun HomeScreenContentSearchPreview() {
                     )
                 )
             ),
+            searchHistory = listOf("crash", "dark mode", "ui bug"),
             onSearchQueryChange = {},
             onClearSearch = {},
             onExitSearch = {},
-            onNavigateToTracker = {}
+            onNavigateToTracker = { _, _ -> },
+            onDeleteHistoryItem = {},
+            onSaveSearchQuery = {}
         )
     }
 }

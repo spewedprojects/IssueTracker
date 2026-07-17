@@ -48,7 +48,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable object Home
 @Serializable object Settings
-@Serializable data class IssueTracker(val appId: String)
+@Serializable data class IssueTracker(val appId: String, val highlightIssueId: String? = null)
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
@@ -120,8 +120,8 @@ class MainActivity : ComponentActivity() {
                         composable<Home> {
                             HomeScreen(
                                 viewModel = viewModel,
-                                onNavigateToTracker = { app ->
-                                    navController.navigate(IssueTracker(app.id))
+                                onNavigateToTracker = { app, issueId ->
+                                    navController.navigate(IssueTracker(app.id, issueId))
                                 },
                                 onNavigateToSettings = {
                                     navController.navigate(Settings)
@@ -149,6 +149,7 @@ class MainActivity : ComponentActivity() {
                                 }
                                 IssueTrackerScreen(
                                     app = app,
+                                    highlightIssueId = route.highlightIssueId,
                                     colorSchemeType = colorSchemeType,
                                     onBack = {
                                         navController.popBackStack()

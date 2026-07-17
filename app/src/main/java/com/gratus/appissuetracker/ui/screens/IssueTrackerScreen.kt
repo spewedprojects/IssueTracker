@@ -26,6 +26,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -55,6 +56,7 @@ import com.gratus.appissuetracker.ui.IssueTrackerViewModel
 import com.gratus.appissuetracker.ui.theme.AppFontSizes
 import com.gratus.appissuetracker.ui.theme.dialogContainerColor
 import com.gratus.appissuetracker.ui.components.issuetracker.*
+import com.gratus.appissuetracker.ui.components.DeleteConfirmationDialog
 import androidx.compose.ui.tooling.preview.Preview
 import com.gratus.appissuetracker.ui.theme.SoftTodoTheme
 
@@ -75,6 +77,7 @@ class IssueTrackerViewModelFactory(
 @Composable
 fun IssueTrackerScreen(
     app: TrackedApp,
+    highlightIssueId: String? = null,
     onBack: () -> Unit,
     colorSchemeType: String,
     viewModel: IssueTrackerViewModel = viewModel(
@@ -85,8 +88,12 @@ fun IssueTrackerScreen(
         )
     )
 ) {
-    LaunchedEffect(app.id) {
+    LaunchedEffect(app.id, highlightIssueId) {
         viewModel.refresh()
+        if (highlightIssueId != null) {
+            viewModel.setFilter(IssueFilter.ALL)
+            viewModel.setSearchQuery("") // Clear search query in list so highlighted issue shows up
+        }
     }
 
     val context = LocalContext.current
@@ -100,6 +107,7 @@ fun IssueTrackerScreen(
         issues = issues,
         searchQuery = searchQuery,
         currentFilter = currentFilter,
+        highlightIssueId = highlightIssueId,
         onBack = onBack,
         onLaunch = app.packageName?.let { pkg ->
             {
@@ -130,6 +138,7 @@ fun IssueTrackerScreenContent(
     issues: List<IssueItem>,
     searchQuery: String,
     currentFilter: IssueFilter,
+    highlightIssueId: String? = null,
     onBack: () -> Unit,
     onLaunch: (() -> Unit)? = null,
     onSearchQueryChange: (String) -> Unit,
@@ -144,6 +153,7 @@ fun IssueTrackerScreenContent(
 ) {
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var itemToEditId by rememberSaveable { mutableStateOf<String?>(null) }
+    var issueToDelete by remember { mutableStateOf<IssueItem?>(null) }
 
     val filteredIssues = issues.filter {
         val matchesFilter = when (currentFilter) {
@@ -310,7 +320,19 @@ fun IssueTrackerScreenContent(
                     Text("No issues match the current filter", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                 }
             } else {
+                val listState = rememberLazyListState()
+
+                LaunchedEffect(highlightIssueId, filteredIssues) {
+                    if (highlightIssueId != null) {
+                        val index = filteredIssues.indexOfFirst { it.id == highlightIssueId }
+                        if (index != -1) {
+                            listState.animateScrollToItem(index)
+                        }
+                    }
+                }
+
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 85.dp, start = 16.dp, end = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -318,8 +340,9 @@ fun IssueTrackerScreenContent(
                     items(filteredIssues, key = { it.id }) { issue ->
                         IssueCard(
                             issue = issue,
+                            highlighted = issue.id == highlightIssueId,
                             onToggle = { onToggleIssue(issue) },
-                            onDelete = { onDeleteIssue(issue) },
+                            onDelete = { issueToDelete = issue },
                             onEdit = { itemToEditId = issue.id; showAddDialog = true },
                             onAddComment = { comment -> onAddComment(issue, comment) }
                         )
@@ -353,6 +376,18 @@ fun IssueTrackerScreenContent(
                 showAddDialog = false
                 itemToEditId = null
             }
+        )
+    }
+
+    if (issueToDelete != null) {
+        DeleteConfirmationDialog(
+            title = "Delete Issue",
+            message = "Are you sure you want to permanently delete issue #${issueToDelete?.serialNumber}?",
+            onConfirm = {
+                issueToDelete?.let { onDeleteIssue(it) }
+                issueToDelete = null
+            },
+            onDismiss = { issueToDelete = null }
         )
     }
 }
@@ -389,6 +424,7 @@ fun IssueTrackerScreenContentPreview() {
             ),
             searchQuery = "",
             currentFilter = IssueFilter.ALL,
+            highlightIssueId = null,
             onBack = {},
             onLaunch = {},
             onSearchQueryChange = {},
