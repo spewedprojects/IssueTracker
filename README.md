@@ -15,7 +15,7 @@ Very narrow usecase: to add app-wise issues in single place.
 - Add multiple modules in the workspace
 - Modules can be installed apps or custom projects
 - Set category and priority to each issue
-- Export individual project issues and directly share from with in the app
+- Export individual project issues (_with applied sorting_) and directly share from with in the app
 - Export/Import Issues in bulk
 - 4 color schemes, support system light/dark mode dynamically
 - Global Search for issues across all modules

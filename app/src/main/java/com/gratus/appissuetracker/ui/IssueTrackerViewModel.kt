@@ -41,10 +41,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 
+import com.gratus.appissuetracker.ui.components.issuetracker.CategoryFilter
+import com.gratus.appissuetracker.ui.components.issuetracker.IssueSort
+import androidx.core.content.edit
+
 enum class IssueFilter { ALL, OPEN, CLOSED }
 
 class IssueTrackerViewModel(application: Application, val app: TrackedApp) : AndroidViewModel(application) {
     private val repository = IssueTrackerRepository(application)
+    private val sharedPrefs = application.getSharedPreferences("issue_tracker_prefs", Context.MODE_PRIVATE)
 
     private val _issues = MutableStateFlow<List<IssueItem>>(emptyList())
     val issues: StateFlow<List<IssueItem>> = _issues.asStateFlow()
@@ -54,6 +59,30 @@ class IssueTrackerViewModel(application: Application, val app: TrackedApp) : And
 
     private val _filter = MutableStateFlow(IssueFilter.ALL)
     val filter: StateFlow<IssueFilter> = _filter.asStateFlow()
+
+    private fun getSavedCategoryFilter(): CategoryFilter {
+        val savedName = sharedPrefs.getString("issue_category_filter_${app.id}", CategoryFilter.ALL.name)
+        return try {
+            CategoryFilter.valueOf(savedName ?: CategoryFilter.ALL.name)
+        } catch (e: Exception) {
+            CategoryFilter.ALL
+        }
+    }
+
+    private val _categoryFilter = MutableStateFlow(getSavedCategoryFilter())
+    val categoryFilter: StateFlow<CategoryFilter> = _categoryFilter.asStateFlow()
+
+    private fun getSavedSortMode(): IssueSort {
+        val savedName = sharedPrefs.getString("issue_sort_mode_${app.id}", IssueSort.NEWEST.name)
+        return try {
+            IssueSort.valueOf(savedName ?: IssueSort.NEWEST.name)
+        } catch (e: Exception) {
+            IssueSort.NEWEST
+        }
+    }
+
+    private val _sortMode = MutableStateFlow(getSavedSortMode())
+    val sortMode: StateFlow<IssueSort> = _sortMode.asStateFlow()
 
     init {
         loadIssues()
@@ -90,12 +119,8 @@ class IssueTrackerViewModel(application: Application, val app: TrackedApp) : And
         }
     }
 
-    fun addIssue(title: String, description: String, category: String, priorityLabel: String, customVersionName: String? = null) {
-        val currentMaxNumber = _issues.value.maxOfOrNull { it.serialNumber } ?: 0
-        
-        val liveVersion = if (!customVersionName.isNullOrBlank()) {
-            customVersionName.trim()
-        } else if (!app.isCustom && app.packageName != null) {
+    private fun getLiveAppVersion(): String {
+        return if (!app.isCustom && app.packageName != null) {
             try {
                 val pm = getApplication<Application>().packageManager
                 pm.getPackageInfo(app.packageName, 0).versionName ?: app.versionName
@@ -105,14 +130,27 @@ class IssueTrackerViewModel(application: Application, val app: TrackedApp) : And
         } else {
             app.versionName
         }
+    }
 
+    fun addIssue(title: String, description: String, category: String, priorityLabel: String, customVersionName: String? = null) {
+        val currentMaxNumber = _issues.value.maxOfOrNull { it.serialNumber } ?: 0
+        
+        val liveVersion = if (!customVersionName.isNullOrBlank()) {
+            customVersionName.trim()
+        } else {
+            getLiveAppVersion()
+        }
+
+        val now = System.currentTimeMillis()
         val newItem = IssueItem(
             title = title,
             serialNumber = currentMaxNumber + 1,
             description = description,
             category = category,
             priority = IssueItem.getPriorityFromLabel(priorityLabel), // Convert Label to Int
-            appVersion = liveVersion
+            appVersion = liveVersion,
+            timestamp = now,
+            lastModified = now
         )
         val updatedList = listOf(newItem) + _issues.value
         _issues.value = updatedList
@@ -142,7 +180,9 @@ class IssueTrackerViewModel(application: Application, val app: TrackedApp) : And
     }
 
     fun updateIssue(item: IssueItem) {
-        val updatedList = _issues.value.map { if (it.id == item.id) item else it }
+        val now = System.currentTimeMillis()
+        val updatedItem = item.copy(lastModified = now)
+        val updatedList = _issues.value.map { if (it.id == item.id) updatedItem else it }
         _issues.value = updatedList
         saveToDisk(updatedList)
     }
@@ -154,13 +194,39 @@ class IssueTrackerViewModel(application: Application, val app: TrackedApp) : And
     }
 
     fun toggleStatus(item: IssueItem) {
-        val newClosedTimestamp = if (!item.isClosed) System.currentTimeMillis() else null
-        updateIssue(item.copy(isClosed = !item.isClosed, closedTimestamp = newClosedTimestamp))
+        val isClosing = !item.isClosed
+        val now = System.currentTimeMillis()
+        val newClosedTimestamp = if (isClosing) now else null
+        val newClosedAppVersion = if (isClosing) getLiveAppVersion() else null
+        
+        val updatedItem = item.copy(
+            isClosed = isClosing,
+            closedTimestamp = newClosedTimestamp,
+            closedAppVersion = newClosedAppVersion,
+            lastModified = now
+        )
+        val updatedList = _issues.value.map { if (it.id == item.id) updatedItem else it }
+        _issues.value = updatedList
+        saveToDisk(updatedList)
     }
 
     fun addComment(item: IssueItem, comment: String) {
         val newComments = item.comments + IssueComment(comment)
         updateIssue(item.copy(comments = newComments))
+    }
+
+    fun updateComment(item: IssueItem, commentIndex: Int, newText: String) {
+        if (commentIndex < 0 || commentIndex >= item.comments.size) return
+        val updatedComments = item.comments.toMutableList()
+        updatedComments[commentIndex] = updatedComments[commentIndex].copy(text = newText)
+        updateIssue(item.copy(comments = updatedComments))
+    }
+
+    fun deleteComment(item: IssueItem, commentIndex: Int) {
+        if (commentIndex < 0 || commentIndex >= item.comments.size) return
+        val updatedComments = item.comments.toMutableList()
+        updatedComments.removeAt(commentIndex)
+        updateIssue(item.copy(comments = updatedComments))
     }
 
     fun setSearchQuery(query: String) {
@@ -169,6 +235,16 @@ class IssueTrackerViewModel(application: Application, val app: TrackedApp) : And
 
     fun setFilter(filter: IssueFilter) {
         _filter.value = filter
+    }
+
+    fun setCategoryFilter(filter: CategoryFilter) {
+        _categoryFilter.value = filter
+        sharedPrefs.edit { putString("issue_category_filter_${app.id}", filter.name) }
+    }
+
+    fun setSortMode(sort: IssueSort) {
+        _sortMode.value = sort
+        sharedPrefs.edit { putString("issue_sort_mode_${app.id}", sort.name) }
     }
 
     private fun saveToDisk(list: List<IssueItem>) {
@@ -181,15 +257,47 @@ class IssueTrackerViewModel(application: Application, val app: TrackedApp) : And
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 // Ensure disk content is loaded and up to date
-                val jsonList = repository.getIssues(app.id)
-                repository.saveIssues(app.id, jsonList) 
+                val allIssues = repository.getIssues(app.id)
+                repository.saveIssues(app.id, allIssues) 
+
+                val currentFilter = _filter.value
+                val currentCategory = _categoryFilter.value
+
+                val exportList = allIssues.filter { issue ->
+                    val matchesStatus = when (currentFilter) {
+                        IssueFilter.ALL -> true
+                        IssueFilter.OPEN -> !issue.isClosed
+                        IssueFilter.CLOSED -> issue.isClosed
+                    }
+                    val matchesCategory = when (currentCategory) {
+                        CategoryFilter.ALL -> true
+                        else -> issue.category.equals(currentCategory.categoryName, ignoreCase = true)
+                    }
+                    matchesStatus && matchesCategory
+                }
+
+                if (exportList.isEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "No issues match active filter to export", Toast.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
 
                 val jsonArray = JSONArray()
-                jsonList.forEach { jsonArray.put(it.toJson()) }
+                exportList.forEach { jsonArray.put(it.toJson()) }
                 val jsonContent = jsonArray.toString(4)
 
                 val cleanAppName = app.name.replace("[^a-zA-Z0-9]".toRegex(), "_")
-                val fullFileName = "issues_${cleanAppName}_export_${System.currentTimeMillis()}.json"
+                val statusPrefix = when (currentFilter) {
+                    IssueFilter.ALL -> ""
+                    IssueFilter.OPEN -> "open_"
+                    IssueFilter.CLOSED -> "closed_"
+                }
+                val categoryPrefix = when (currentCategory) {
+                    CategoryFilter.ALL -> ""
+                    else -> "${currentCategory.categoryName!!.lowercase()}_"
+                }
+                val fullFileName = "${statusPrefix}${categoryPrefix}issues_${cleanAppName}_export_${System.currentTimeMillis()}.json"
                 val resolver = context.contentResolver
                 val contentValues = ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, fullFileName)

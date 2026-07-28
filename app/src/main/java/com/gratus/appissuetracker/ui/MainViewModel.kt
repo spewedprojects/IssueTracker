@@ -73,6 +73,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _totalIssuesCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
     val totalIssuesCounts: StateFlow<Map<String, Int>> = _totalIssuesCounts.asStateFlow()
 
+    // Last Modified Timestamp for each app
+    private val _lastModifiedTimestamps = MutableStateFlow<Map<String, Long>>(emptyMap())
+    val lastModifiedTimestamps: StateFlow<Map<String, Long>> = _lastModifiedTimestamps.asStateFlow()
+
     // Tracked Apps List
     private val _apps = MutableStateFlow<List<TrackedApp>>(emptyList())
     // Combine raw apps flow with sorting settings and issue counts to sort dynamically
@@ -80,14 +84,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _apps,
         _settingsSortMode,
         _openIssuesCounts,
-        _totalIssuesCounts
-    ) { appsList, sortMode, openCounts, totalCounts ->
+        _totalIssuesCounts,
+        _lastModifiedTimestamps
+    ) { appsList, sortMode, openCounts, totalCounts, lastModifiedMap ->
         when (sortMode) {
             "highest_issues" -> appsList.sortedByDescending { totalCounts[it.id] ?: 0 }
             "lowest_issues" -> appsList.sortedBy { totalCounts[it.id] ?: 0 }
             "highest_open_issues" -> appsList.sortedByDescending { openCounts[it.id] ?: 0 }
             "lowest_open_issues" -> appsList.sortedBy { openCounts[it.id] ?: 0 }
             "alphabetical" -> appsList.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+            "modified" -> appsList.sortedByDescending { lastModifiedMap[it.id] ?: it.addedTimestamp }
             "added_date" -> appsList.sortedByDescending { it.addedTimestamp }
             else -> appsList.sortedByDescending { it.addedTimestamp }
         }
@@ -199,17 +205,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val loadedApps = repository.getApps()
             _apps.value = loadedApps
             
-            // Calculate open and total issues counts in background
+            // Calculate open, total issues counts, and last modified timestamps in background
             withContext(Dispatchers.IO) {
                 val openCounts = mutableMapOf<String, Int>()
                 val totalCounts = mutableMapOf<String, Int>()
+                val lastModMap = mutableMapOf<String, Long>()
                 loadedApps.forEach { app ->
                     val issues = repository.getIssues(app.id)
                     openCounts[app.id] = issues.count { !it.isClosed }
                     totalCounts[app.id] = issues.size
+                    val maxIssueMod = issues.maxOfOrNull { it.lastModified } ?: app.addedTimestamp
+                    lastModMap[app.id] = maxOf(maxIssueMod, app.addedTimestamp)
                 }
                 _openIssuesCounts.value = openCounts
                 _totalIssuesCounts.value = totalCounts
+                _lastModifiedTimestamps.value = lastModMap
             }
         }
     }

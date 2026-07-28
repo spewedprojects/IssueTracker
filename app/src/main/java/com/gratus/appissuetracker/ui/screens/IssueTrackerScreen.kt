@@ -24,6 +24,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -42,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -60,6 +62,12 @@ import com.gratus.appissuetracker.ui.components.DeleteConfirmationDialog
 import androidx.compose.ui.tooling.preview.Preview
 import com.gratus.appissuetracker.ui.theme.SoftTodoTheme
 
+import com.gratus.appissuetracker.ui.components.issuetracker.IssueSort
+import com.gratus.appissuetracker.ui.components.issuetracker.IssueSortDropdown
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
+
 class IssueTrackerViewModelFactory(
     private val application: android.app.Application,
     private val app: TrackedApp
@@ -73,7 +81,7 @@ class IssueTrackerViewModelFactory(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun IssueTrackerScreen(
     app: TrackedApp,
@@ -100,6 +108,8 @@ fun IssueTrackerScreen(
     val issues by viewModel.issues.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val currentFilter by viewModel.filter.collectAsState()
+    val categoryFilter by viewModel.categoryFilter.collectAsState()
+    val sortMode by viewModel.sortMode.collectAsState()
 
     IssueTrackerScreenContent(
         app = app,
@@ -107,6 +117,8 @@ fun IssueTrackerScreen(
         issues = issues,
         searchQuery = searchQuery,
         currentFilter = currentFilter,
+        currentCategory = categoryFilter,
+        currentSort = sortMode,
         highlightIssueId = highlightIssueId,
         onBack = onBack,
         onLaunch = app.packageName?.let { pkg ->
@@ -121,53 +133,83 @@ fun IssueTrackerScreen(
         },
         onSearchQueryChange = { viewModel.setSearchQuery(it) },
         onFilterChange = { viewModel.setFilter(it) },
+        onCategoryChange = { viewModel.setCategoryFilter(it) },
+        onSortChange = { viewModel.setSortMode(it) },
         onExport = { viewModel.exportAndShare(context) },
         onToggleIssue = { viewModel.toggleStatus(it) },
         onDeleteIssue = { viewModel.deleteIssue(it) },
         onUpdateIssue = { viewModel.updateIssue(it) },
         onAddIssue = { title, desc, cat, prio, version -> viewModel.addIssue(title, desc, cat, prio, version) },
-        onAddComment = { issue, comment -> viewModel.addComment(issue, comment) }
+        onAddComment = { issue, comment -> viewModel.addComment(issue, comment) },
+        onEditComment = { issue, index, newText -> viewModel.updateComment(issue, index, newText) },
+        onDeleteComment = { issue, index -> viewModel.deleteComment(issue, index) }
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun IssueTrackerScreenContent(
+    modifier: Modifier = Modifier,
     app: TrackedApp,
     colorSchemeType: String,
     issues: List<IssueItem>,
     searchQuery: String,
     currentFilter: IssueFilter,
+    currentCategory: CategoryFilter = CategoryFilter.ALL,
+    currentSort: IssueSort = IssueSort.NEWEST,
     highlightIssueId: String? = null,
     onBack: () -> Unit,
     onLaunch: (() -> Unit)? = null,
     onSearchQueryChange: (String) -> Unit,
     onFilterChange: (IssueFilter) -> Unit,
+    onCategoryChange: (CategoryFilter) -> Unit = {},
+    onSortChange: (IssueSort) -> Unit = {},
     onExport: () -> Unit,
     onToggleIssue: (IssueItem) -> Unit,
     onDeleteIssue: (IssueItem) -> Unit,
     onUpdateIssue: (IssueItem) -> Unit,
     onAddIssue: (String, String, String, String, String?) -> Unit,
     onAddComment: (IssueItem, String) -> Unit,
-    modifier: Modifier = Modifier
+    onEditComment: (IssueItem, Int, String) -> Unit = { _, _, _ -> },
+    onDeleteComment: (IssueItem, Int) -> Unit = { _, _ -> }
 ) {
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var itemToEditId by rememberSaveable { mutableStateOf<String?>(null) }
     var issueToDelete by remember { mutableStateOf<IssueItem?>(null) }
 
-    val filteredIssues = issues.filter {
+    val focusManager = LocalFocusManager.current
+    val isImeVisible = WindowInsets.isImeVisible
+    LaunchedEffect(isImeVisible) {
+        if (!isImeVisible) {
+            focusManager.clearFocus()
+        }
+    }
+
+    val filteredIssues = issues.filter { issue ->
         val matchesFilter = when (currentFilter) {
             IssueFilter.ALL -> true
-            IssueFilter.OPEN -> !it.isClosed
-            IssueFilter.CLOSED -> it.isClosed
+            IssueFilter.OPEN -> !issue.isClosed
+            IssueFilter.CLOSED -> issue.isClosed
         }
-        val matchesSearch = it.title.contains(searchQuery, ignoreCase = true) || 
-                it.description.contains(searchQuery, ignoreCase = true) ||
-                it.serialNumber.toString() == searchQuery || 
-                "#${it.serialNumber}".contains(searchQuery, ignoreCase = true) || 
-                it.appVersion?.contains(searchQuery, ignoreCase = true) == true
-        matchesFilter && matchesSearch
-    }.sortedByDescending { it.timestamp }
+        val matchesCategory = when (currentCategory) {
+            CategoryFilter.ALL -> true
+            else -> issue.category.equals(currentCategory.categoryName, ignoreCase = true)
+        }
+        val matchesSearch = issue.title.contains(searchQuery, ignoreCase = true) || 
+                issue.description.contains(searchQuery, ignoreCase = true) ||
+                issue.serialNumber.toString() == searchQuery || 
+                "#${issue.serialNumber}".contains(searchQuery, ignoreCase = true) || 
+                issue.appVersion?.contains(searchQuery, ignoreCase = true) == true
+        matchesFilter && matchesCategory && matchesSearch
+    }.let { list ->
+        when (currentSort) {
+            IssueSort.HIGHEST_PRIORITY -> list.sortedBy { it.priority }
+            IssueSort.LOWEST_PRIORITY -> list.sortedByDescending { it.priority }
+            IssueSort.NEWEST -> list.sortedByDescending { it.timestamp }
+            IssueSort.OLDEST -> list.sortedBy { it.timestamp }
+            IssueSort.MODIFIED -> list.sortedByDescending { it.lastModified }
+        }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -223,27 +265,67 @@ fun IssueTrackerScreenContent(
                     modifier = Modifier.padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = onSearchQueryChange,
-                        placeholder = { Text("Search issues...") },
-                        leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = "Search") },
-                        trailingIcon = {
-                            if (searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { onSearchQueryChange("") }) {
-                                    Icon(imageVector = Icons.Default.Clear, contentDescription = "Clear search")
+                    Row (modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = onSearchQueryChange,
+                            placeholder = { Text("Search issues...") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Search"
+                                )
+                            },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { onSearchQueryChange("") }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Clear,
+                                            contentDescription = "Clear search"
+                                        )
+                                    }
                                 }
+                            },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                            ),
+                            keyboardOptions = KeyboardOptions(
+                                imeAction = ImeAction.Search,
+                                capitalization = KeyboardCapitalization.Sentences
+                            ),
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        Spacer(modifier = Modifier.width(6.dp))
+                        var sortDropdownExpanded by remember { mutableStateOf(false) }
+                        Box {
+                            IconButton(
+                                onClick = { sortDropdownExpanded = true },
+                                modifier = Modifier
+                                    .background(
+                                        color = if (sortDropdownExpanded) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent,
+                                        shape = CircleShape
+                                    )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FilterList,
+                                    contentDescription = "Sort Issue List"
+                                )
                             }
-                        },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                        ),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, capitalization = KeyboardCapitalization.Sentences)
-                    )
+                            IssueSortDropdown(
+                                expanded = sortDropdownExpanded,
+                                selectedCategory = currentCategory,
+                                onCategorySelected = onCategoryChange,
+                                selectedSort = currentSort,
+                                onSortSelected = onSortChange,
+                                onDismissRequest = { sortDropdownExpanded = false }
+                            )
+                        }
+                    }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -322,13 +404,27 @@ fun IssueTrackerScreenContent(
             } else {
                 val listState = rememberLazyListState()
 
-                LaunchedEffect(highlightIssueId, filteredIssues) {
+                // Reset scroll to top when sort mode, filter, or category changes
+                LaunchedEffect(currentSort, currentFilter, currentCategory) {
+                    listState.scrollToItem(0)
+                }
+
+                // Handle issue addition and deep link highlights
+                var previousIssueCount by remember { mutableIntStateOf(issues.size) }
+
+                LaunchedEffect(highlightIssueId, filteredIssues, issues.size) {
                     if (highlightIssueId != null) {
                         val index = filteredIssues.indexOfFirst { it.id == highlightIssueId }
                         if (index != -1) {
                             listState.animateScrollToItem(index)
                         }
+                    } else if (issues.size > previousIssueCount) {
+                        // Scroll to top only if user was already near the top
+                        if (listState.firstVisibleItemIndex <= 1) {
+                            listState.animateScrollToItem(0)
+                        }
                     }
+                    previousIssueCount = issues.size
                 }
 
                 LazyColumn(
@@ -344,7 +440,9 @@ fun IssueTrackerScreenContent(
                             onToggle = { onToggleIssue(issue) },
                             onDelete = { issueToDelete = issue },
                             onEdit = { itemToEditId = issue.id; showAddDialog = true },
-                            onAddComment = { comment -> onAddComment(issue, comment) }
+                            onAddComment = { comment -> onAddComment(issue, comment) },
+                            onEditComment = { index, newText -> onEditComment(issue, index, newText) },
+                            onDeleteComment = { index -> onDeleteComment(issue, index) }
                         )
                     }
                 }
@@ -395,10 +493,10 @@ fun IssueTrackerScreenContent(
 @Preview(showBackground = true)
 @Composable
 fun IssueTrackerScreenContentPreview() {
-    SoftTodoTheme {
+    SoftTodoTheme (colorSchemeType = "simple") {
         IssueTrackerScreenContent(
             app = TrackedApp("1", "Example Tracker App", "com.example.tracker", "1.0.0", isCustom = false),
-            colorSchemeType = "minimal",
+            colorSchemeType = "simple",
             issues = listOf(
                 IssueItem(
                     id = "1",

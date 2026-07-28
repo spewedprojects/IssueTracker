@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -46,11 +47,14 @@ import androidx.compose.ui.window.DialogProperties
 import com.gratus.appissuetracker.data.IssueItem
 import com.gratus.appissuetracker.data.TrackedApp
 import com.gratus.appissuetracker.ui.components.DiscardChangesDialog
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
 import com.gratus.appissuetracker.ui.theme.AppFontSizes
 import com.gratus.appissuetracker.ui.theme.SoftTodoTheme
 import com.gratus.appissuetracker.ui.theme.dialogContainerColor
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun IssueAddDialog(
     initialItem: IssueItem?,
@@ -94,7 +98,7 @@ fun IssueAddDialog(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun IssueAddDialogContent(
     initialItem: IssueItem?,
@@ -106,6 +110,13 @@ fun IssueAddDialogContent(
     onHasChangesChanged: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+    val isImeVisible = WindowInsets.isImeVisible
+    LaunchedEffect(isImeVisible) {
+        if (!isImeVisible) {
+            focusManager.clearFocus()
+        }
+    }
     var title by rememberSaveable { mutableStateOf(initialItem?.title ?: "") }
     var description by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(initialItem?.description ?: "")) }
     var category by rememberSaveable { mutableStateOf(initialItem?.category ?: "Issue") }

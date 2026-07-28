@@ -32,6 +32,9 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,19 +43,23 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.gratus.appissuetracker.R
 import com.gratus.appissuetracker.data.IssueItem
 import com.gratus.appissuetracker.data.TrackedApp
 import com.gratus.appissuetracker.ui.components.issuetracker.getPriorityColor
 import com.gratus.appissuetracker.ui.theme.AppFontSizes
 import com.gratus.appissuetracker.ui.theme.SoftTodoTheme
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SearchScreenOverlay(
     searchQuery: String,
@@ -68,6 +75,14 @@ fun SearchScreenOverlay(
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
+    }
+
+    val focusManager = LocalFocusManager.current
+    val isImeVisible = WindowInsets.isImeVisible
+    LaunchedEffect(isImeVisible) {
+        if (!isImeVisible) {
+            focusManager.clearFocus()
+        }
     }
 
     Surface(
@@ -342,11 +357,33 @@ fun GlobalSearchAppCard(
                             )
                         }
 
-                        // Category & Priority badges
+                        // Issue Open/Closed, Category & Priority badges
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            // Issue Open/Close
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, color = MaterialTheme.colorScheme.primary)
+                            ) {
+                                Text(
+                                    text = if (issue.isClosed) "Closed" else "Open",
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 0.dp),
+                                    fontSize = AppFontSizes.pico,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+
+//                            Icon(
+//                                painter = painterResource(
+//                                    id = if (issue.isClosed) com.gratus.appissuetracker.R.drawable.check_circle else R.drawable.dot_cricle
+//                                ),
+//                                contentDescription = if (issue.isClosed) "Closed" else "Open",
+//                                tint = Color.Unspecified, // keep original drawable colors
+//                                modifier = Modifier.size(24.dp)
+//                            )
+
                             // Category
                             val catColor = when (issue.category) {
                                 "Issue" -> Color(0xFFE57373)
@@ -420,7 +457,7 @@ fun HomeScreenContentSearchPreview() {
                         description = "Add dark mode toggle to settings",
                         category = "Feature",
                         priority = 2,
-                        isClosed = false,
+                        isClosed = true,
                         timestamp = 1234567890L
                     )
                 )

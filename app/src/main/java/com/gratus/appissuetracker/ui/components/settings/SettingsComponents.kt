@@ -100,7 +100,7 @@ fun AestheticsSettingsCard(
                                     RoundedCornerShape(8.dp)
                                 )
                                 .clickable { onThemeChange(mode) }
-                                .padding(vertical = 10.dp),
+                                .padding(vertical = 8.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -489,6 +489,7 @@ fun SortingSettingsCard(
                 val sortModes = listOf(
                     Pair("added_date", "Date Added"),
                     Pair("alphabetical", "Alphabetical"),
+                    Pair("modified", "Recently Modified"),
                     Pair("highest_issues", "Highest Issues"),
                     Pair("lowest_issues", "Lowest Issues"),
                     Pair("highest_open_issues", "Highest Open"),
@@ -519,7 +520,7 @@ fun SortingSettingsCard(
                                             RoundedCornerShape(8.dp)
                                         )
                                         .clickable { onSortModeChange(mode) }
-                                        .padding(vertical = 12.dp),
+                                        .padding(vertical = 8.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(

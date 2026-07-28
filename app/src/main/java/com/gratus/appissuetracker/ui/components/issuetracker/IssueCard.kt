@@ -43,6 +43,8 @@ import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
@@ -70,6 +72,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gratus.appissuetracker.data.IssueComment
 import com.gratus.appissuetracker.data.IssueItem
+import com.gratus.appissuetracker.ui.components.DeleteConfirmationDialog
+import com.gratus.appissuetracker.ui.components.DiscardChangesDialog
 import com.gratus.appissuetracker.ui.components.parseStyledDescription
 import com.gratus.appissuetracker.ui.theme.AppFontSizes
 import com.gratus.appissuetracker.ui.theme.SoftTodoTheme
@@ -84,6 +88,8 @@ fun IssueCard(
     onDelete: () -> Unit,
     onEdit: () -> Unit,
     onAddComment: (String) -> Unit,
+    onEditComment: ((index: Int, newText: String) -> Unit)? = null,
+    onDeleteComment: ((index: Int) -> Unit)? = null,
     initialExpanded: Boolean = false,
     highlighted: Boolean = false
 ) {
@@ -216,6 +222,9 @@ fun IssueCard(
                                         append("Closed ")
                                     }
                                     append(DateTimeUtils.formatShortDate(closedCal.time))
+                                    if (!issue.closedAppVersion.isNullOrBlank()) {
+                                        append(" (v${issue.closedAppVersion})")
+                                    }
                                 },
                                 fontSize = AppFontSizes.extraSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
@@ -279,7 +288,7 @@ fun IssueCard(
             if (expanded) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "v: ${issue.appVersion ?: "Unknown"}",
+                    text = "v: ${issue.appVersion ?: "Unknown"}${if (issue.isClosed && !issue.closedAppVersion.isNullOrBlank()) " • Closed v: ${issue.closedAppVersion}" else ""}",
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier
                         .align(Alignment.End)
@@ -295,25 +304,34 @@ fun IssueCard(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
                             .clickable { commentsExpanded = !commentsExpanded }
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                            .padding(vertical = 4.dp, horizontal = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Comment,
+                            contentDescription = "Comments",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "Comments",
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "(${issue.comments.size})",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        IconButton(
+                            onClick = { commentsExpanded = !commentsExpanded },
+                            modifier = Modifier.size(24.dp)
                         ) {
-                            Text(
-                                text = "${issue.comments.size}",
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.primary
-                            )
                             Icon(
                                 imageVector = if (commentsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                                 contentDescription = "Expand/Collapse comments",
@@ -345,26 +363,169 @@ fun IssueCard(
                                     .padding(vertical = 2.dp),
                                 verticalArrangement = Arrangement.spacedBy(2.dp)
                             ) {
+                                var editingCommentIndex by remember { mutableStateOf<Int?>(null) }
+                                var editingCommentText by remember { mutableStateOf("") }
+                                var commentToDeleteIndex by remember { mutableStateOf<Int?>(null) }
+                                var showDiscardCommentEditDialog by remember { mutableStateOf(false) }
+                                var showDiscardNewCommentDialog by remember { mutableStateOf(false) }
+                                var isAddingComment by remember { mutableStateOf(false) }
+                                var newCommentText by remember { mutableStateOf("") }
+                                val commentFocusRequester = remember { FocusRequester() }
+
+                                if (commentToDeleteIndex != null) {
+                                    DeleteConfirmationDialog(
+                                        title = "Delete Comment",
+                                        message = "Are you sure you want to delete this comment?",
+                                        onConfirm = {
+                                            val targetIdx = commentToDeleteIndex
+                                            commentToDeleteIndex = null
+                                            if (targetIdx != null) {
+                                                onDeleteComment?.invoke(targetIdx)
+                                            }
+                                        },
+                                        onDismiss = {
+                                            commentToDeleteIndex = null
+                                        }
+                                    )
+                                }
+
+                                if (showDiscardCommentEditDialog) {
+                                    DiscardChangesDialog(
+                                        onConfirm = {
+                                            editingCommentIndex = null
+                                            editingCommentText = ""
+                                            showDiscardCommentEditDialog = false
+                                        },
+                                        onDismiss = {
+                                            showDiscardCommentEditDialog = false
+                                        }
+                                    )
+                                }
+
+                                if (showDiscardNewCommentDialog) {
+                                    DiscardChangesDialog(
+                                        onConfirm = {
+                                            newCommentText = ""
+                                            isAddingComment = false
+                                            showDiscardNewCommentDialog = false
+                                        },
+                                        onDismiss = {
+                                            showDiscardNewCommentDialog = false
+                                        }
+                                    )
+                                }
+
                                 issue.comments.forEachIndexed { index, comment ->
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 8.dp, horizontal = 12.dp)
-                                    ) {
-                                        Text(
-                                            text = parseStyledDescription(comment.text),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        val cCal = Calendar.getInstance().apply { timeInMillis = comment.timestamp }
-                                        val iCal = Calendar.getInstance().apply { timeInMillis = issue.timestamp }
-                                        val isSameDay = DateTimeUtils.isSameDay(cCal, iCal)
-                                        Text(
-                                            text = if (isSameDay) DateTimeUtils.formatAlarmTime(context, comment.timestamp) else "${DateTimeUtils.formatShortDate(cCal.time)}, ${DateTimeUtils.formatAlarmTime(context, comment.timestamp)}",
-                                            fontSize = 10.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                        )
+                                    if (editingCommentIndex == index) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 4.dp, horizontal = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            OutlinedTextField(
+                                                value = editingCommentText,
+                                                onValueChange = { editingCommentText = it },
+                                                modifier = Modifier.weight(1f),
+                                                singleLine = true,
+                                                shape = RoundedCornerShape(8.dp),
+                                                colors = OutlinedTextFieldDefaults.colors(
+                                                    focusedBorderColor = MaterialTheme.colorScheme.primary
+                                                )
+                                            )
+                                            IconButton(
+                                                onClick = {
+                                                    if (editingCommentText.isNotBlank()) {
+                                                        onEditComment?.invoke(index, editingCommentText.trim())
+                                                    }
+                                                    editingCommentIndex = null
+                                                },
+                                                modifier = Modifier.size(32.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Check,
+                                                    contentDescription = "Save comment",
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
+                                            IconButton(
+                                                onClick = {
+                                                    val originalText = comment.text
+                                                    if (editingCommentText != originalText) {
+                                                        showDiscardCommentEditDialog = true
+                                                    } else {
+                                                        editingCommentIndex = null
+                                                    }
+                                                },
+                                                modifier = Modifier.size(32.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Close,
+                                                    contentDescription = "Cancel edit",
+                                                    tint = MaterialTheme.colorScheme.outline,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
+                                        }
+                                    } else {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 8.dp, horizontal = 12.dp),
+                                            verticalAlignment = Alignment.Top,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = parseStyledDescription(comment.text),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                                val cCal = Calendar.getInstance().apply { timeInMillis = comment.timestamp }
+                                                val iCal = Calendar.getInstance().apply { timeInMillis = issue.timestamp }
+                                                val isSameDay = DateTimeUtils.isSameDay(cCal, iCal)
+                                                Text(
+                                                    text = if (isSameDay) DateTimeUtils.formatAlarmTime(context, comment.timestamp) else "${DateTimeUtils.formatShortDate(cCal.time)}, ${DateTimeUtils.formatAlarmTime(context, comment.timestamp)}",
+                                                    fontSize = 10.sp,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                                )
+                                            }
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                            ) {
+                                                IconButton(
+                                                    onClick = {
+                                                        editingCommentIndex = index
+                                                        editingCommentText = comment.text
+                                                    },
+                                                    modifier = Modifier.size(24.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Edit,
+                                                        contentDescription = "Edit Comment",
+                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                                        modifier = Modifier.size(14.dp)
+                                                    )
+                                                }
+                                                IconButton(
+                                                    onClick = {
+                                                        commentToDeleteIndex = index
+                                                    },
+                                                    modifier = Modifier.size(24.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.DeleteOutline,
+                                                        contentDescription = "Delete Comment",
+                                                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f),
+                                                        modifier = Modifier.size(14.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
                                     }
                                     if (index < issue.comments.size - 1) {
                                         HorizontalDivider(
@@ -376,10 +537,6 @@ fun IssueCard(
                                 }
 
                                 // Add comment input row
-                                var isAddingComment by remember { mutableStateOf(false) }
-                                var newCommentText by remember { mutableStateOf("") }
-                                val commentFocusRequester = remember { FocusRequester() }
-                                
                                 if (isAddingComment) {
                                     val keyboardController = LocalSoftwareKeyboardController.current
                                     LaunchedEffect(Unit) {
@@ -433,8 +590,12 @@ fun IssueCard(
                                         }
                                         IconButton(
                                             onClick = {
-                                                newCommentText = ""
-                                                isAddingComment = false
+                                                if (newCommentText.isNotBlank()) {
+                                                    showDiscardNewCommentDialog = true
+                                                } else {
+                                                    newCommentText = ""
+                                                    isAddingComment = false
+                                                }
                                             },
                                             modifier = Modifier.size(32.dp)
                                         ) {
@@ -502,14 +663,15 @@ fun IssueCardCollapsedPreview() {
                 issue = IssueItem(
                     id = "1",
                     serialNumber = 12,
-                    title = "Nullpointer on launch",
-                    description = "Happens when user is not logged in and starts the app.",
+                    title = "NullPointerException on app launch",
+                    description = "Happens when user is not logged in and starts the app for the first time.",
                     category = "Issue",
                     priority = 1,
                     isClosed = false,
                     timestamp = System.currentTimeMillis() - 86400000L,
+                    appVersion = "1.0.4",
                     comments = listOf(
-                        IssueComment("Confirmed on Google Pixel", System.currentTimeMillis() - 43200000L)
+                        IssueComment("Confirmed on Google Pixel 7", System.currentTimeMillis() - 43200000L)
                     )
                 ),
                 onToggle = {},
@@ -530,15 +692,16 @@ fun IssueCardExpandedPreview() {
                 issue = IssueItem(
                     id = "2",
                     serialNumber = 3,
-                    title = "Add Google Login",
-                    description = "Request from marketing to add Google OAuth options.",
+                    title = "Add Google OAuth Login Support",
+                    description = "Request from marketing team to integrate Google OAuth 2.0 options.",
                     category = "Feature",
                     priority = 2,
                     isClosed = false,
                     timestamp = System.currentTimeMillis() - 172800000L,
+                    appVersion = "1.1.0",
                     comments = listOf(
-                        IssueComment("Requires API Console credentials", System.currentTimeMillis() - 86400000L),
-                        IssueComment("Assigned to backend team", System.currentTimeMillis() - 43200000L)
+                        IssueComment("Requires API Console OAuth credentials", System.currentTimeMillis() - 86400000L),
+                        IssueComment("Assigned to authentication team", System.currentTimeMillis() - 43200000L)
                     )
                 ),
                 onToggle = {},
@@ -546,6 +709,66 @@ fun IssueCardExpandedPreview() {
                 onEdit = {},
                 onAddComment = {},
                 initialExpanded = true
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun IssueCardClosedPreview() {
+    SoftTodoTheme {
+        Box(modifier = Modifier.padding(16.dp)) {
+            IssueCard(
+                issue = IssueItem(
+                    id = "3",
+                    serialNumber = 42,
+                    title = "Memory leak in video player fragment",
+                    description = "LeakCanary detected 14MB uncollected bitmap instance on back navigation.",
+                    category = "Issue",
+                    priority = 1,
+                    isClosed = true,
+                    timestamp = System.currentTimeMillis() - 604800000L,
+                    closedTimestamp = System.currentTimeMillis() - 86400000L,
+                    appVersion = "1.0.2",
+                    closedAppVersion = "1.0.3",
+                    comments = listOf(
+                        IssueComment("Fixed by clearing ExoPlayer surface onOnDestroy", System.currentTimeMillis() - 90000000L)
+                    )
+                ),
+                onToggle = {},
+                onDelete = {},
+                onEdit = {},
+                onAddComment = {},
+                initialExpanded = true
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun IssueCardHighlightedPreview() {
+    SoftTodoTheme {
+        Box(modifier = Modifier.padding(16.dp)) {
+            IssueCard(
+                issue = IssueItem(
+                    id = "4",
+                    serialNumber = 7,
+                    title = "Highlighted search result issue",
+                    description = "This card illustrates the active primary border highlight effect when searched or targeted.",
+                    category = "Idea",
+                    priority = 3,
+                    isClosed = false,
+                    timestamp = System.currentTimeMillis() - 3600000L,
+                    appVersion = "1.2.0"
+                ),
+                onToggle = {},
+                onDelete = {},
+                onEdit = {},
+                onAddComment = {},
+                initialExpanded = true,
+                highlighted = true
             )
         }
     }

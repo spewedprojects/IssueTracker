@@ -53,8 +53,10 @@ data class IssueItem(
     val isClosed: Boolean = false,
     val timestamp: Long = System.currentTimeMillis(),
     val closedTimestamp: Long? = null,
+    val lastModified: Long = timestamp,
     val comments: List<IssueComment> = emptyList(),
-    val appVersion: String? = null
+    val appVersion: String? = null,
+    val closedAppVersion: String? = null
 ) {
     fun toJson(): JSONObject {
         val json = JSONObject()
@@ -67,7 +69,9 @@ data class IssueItem(
         json.put("isClosed", isClosed)
         json.put("timestamp", timestamp)
         json.put("closedTimestamp", closedTimestamp)
+        json.put("lastModified", lastModified)
         json.put("appVersion", appVersion)
+        json.put("closedAppVersion", closedAppVersion)
         
         val commentsArray = JSONArray()
         comments.forEach { commentsArray.put(it.toJson()) }
@@ -101,6 +105,10 @@ data class IssueItem(
                 is String -> getPriorityFromLabel(priorityObj)
                 else -> 2
             }
+
+            val timestampVal = json.optLong("timestamp", System.currentTimeMillis())
+            val closedTsVal = if (json.has("closedTimestamp") && !json.isNull("closedTimestamp")) json.getLong("closedTimestamp") else null
+            val lastModVal = if (json.has("lastModified") && !json.isNull("lastModified")) json.getLong("lastModified") else (closedTsVal ?: timestampVal)
             
             return IssueItem(
                 id = json.getString("id"),
@@ -110,10 +118,12 @@ data class IssueItem(
                 category = json.getString("category"),
                 priority = priorityInt, // Use the parsed Int
                 isClosed = json.getBoolean("isClosed"),
-                timestamp = json.getLong("timestamp"),
-                closedTimestamp = if (json.has("closedTimestamp") && !json.isNull("closedTimestamp")) json.getLong("closedTimestamp") else null,
+                timestamp = timestampVal,
+                closedTimestamp = closedTsVal,
+                lastModified = lastModVal,
                 comments = commentsList,
-                appVersion = if (json.has("appVersion") && !json.isNull("appVersion")) json.getString("appVersion") else null
+                appVersion = if (json.has("appVersion") && !json.isNull("appVersion")) json.getString("appVersion") else null,
+                closedAppVersion = if (json.has("closedAppVersion") && !json.isNull("closedAppVersion")) json.getString("closedAppVersion") else null
             )
         }
         fun getPriorityLabel(priority: Int): String = when (priority) {

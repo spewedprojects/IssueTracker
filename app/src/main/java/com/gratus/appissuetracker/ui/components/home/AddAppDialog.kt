@@ -40,13 +40,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.ui.platform.LocalFocusManager
 import com.gratus.appissuetracker.ui.InstalledAppInfo
 import com.gratus.appissuetracker.ui.components.DiscardChangesDialog
 import com.gratus.appissuetracker.ui.theme.AppFontSizes
 import com.gratus.appissuetracker.ui.theme.SoftTodoTheme
 import com.gratus.appissuetracker.ui.theme.dialogContainerColor
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddAppDialog(
     installedApps: List<InstalledAppInfo>,
@@ -88,7 +92,7 @@ fun AddAppDialog(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddAppDialogContent(
     installedApps: List<InstalledAppInfo>,
@@ -101,6 +105,14 @@ fun AddAppDialogContent(
 ) {
     var activeTab by remember { mutableStateOf(initialActiveTab) } // 0 = Custom, 1 = Installed
     
+    val focusManager = LocalFocusManager.current
+    val isImeVisible = WindowInsets.isImeVisible
+    LaunchedEffect(isImeVisible) {
+        if (!isImeVisible) {
+            focusManager.clearFocus()
+        }
+    }
+
     // Custom App fields
     var customName by remember { mutableStateOf("") }
     var customVersion by remember { mutableStateOf("1.0.0") }
