@@ -19,7 +19,6 @@
 package com.gratus.appissuetracker.ui.screens
 
 import android.widget.Toast
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -47,7 +46,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -56,7 +57,6 @@ import com.gratus.appissuetracker.data.TrackedApp
 import com.gratus.appissuetracker.ui.IssueFilter
 import com.gratus.appissuetracker.ui.IssueTrackerViewModel
 import com.gratus.appissuetracker.ui.theme.AppFontSizes
-import com.gratus.appissuetracker.ui.theme.dialogContainerColor
 import com.gratus.appissuetracker.ui.components.issuetracker.*
 import com.gratus.appissuetracker.ui.components.DeleteConfirmationDialog
 import androidx.compose.ui.tooling.preview.Preview
@@ -67,6 +67,9 @@ import com.gratus.appissuetracker.ui.components.issuetracker.IssueSortDropdown
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 
 class IssueTrackerViewModelFactory(
     private val application: android.app.Application,
@@ -185,22 +188,36 @@ fun IssueTrackerScreenContent(
         }
     }
 
-    val filteredIssues = issues.filter { issue ->
+    val categoryFilteredIssues = remember(issues, currentCategory) {
+        issues.filter { issue ->
+            when (currentCategory) {
+                CategoryFilter.ALL -> true
+                else -> issue.category.equals(currentCategory.categoryName, ignoreCase = true)
+            }
+        }
+    }
+
+    val categoryCounts = remember(issues) {
+        mapOf(
+            CategoryFilter.ALL to issues.size,
+            CategoryFilter.ISSUE to issues.count { it.category.equals("Issue", ignoreCase = true) },
+            CategoryFilter.FEATURE to issues.count { it.category.equals("Feature", ignoreCase = true) },
+            CategoryFilter.IDEA to issues.count { it.category.equals("Idea", ignoreCase = true) }
+        )
+    }
+
+    val filteredIssues = categoryFilteredIssues.filter { issue ->
         val matchesFilter = when (currentFilter) {
             IssueFilter.ALL -> true
             IssueFilter.OPEN -> !issue.isClosed
             IssueFilter.CLOSED -> issue.isClosed
-        }
-        val matchesCategory = when (currentCategory) {
-            CategoryFilter.ALL -> true
-            else -> issue.category.equals(currentCategory.categoryName, ignoreCase = true)
         }
         val matchesSearch = issue.title.contains(searchQuery, ignoreCase = true) || 
                 issue.description.contains(searchQuery, ignoreCase = true) ||
                 issue.serialNumber.toString() == searchQuery || 
                 "#${issue.serialNumber}".contains(searchQuery, ignoreCase = true) || 
                 issue.appVersion?.contains(searchQuery, ignoreCase = true) == true
-        matchesFilter && matchesCategory && matchesSearch
+        matchesFilter && matchesSearch
     }.let { list ->
         when (currentSort) {
             IssueSort.HIGHEST_PRIORITY -> list.sortedBy { it.priority }
@@ -302,18 +319,28 @@ fun IssueTrackerScreenContent(
 
                         Spacer(modifier = Modifier.width(6.dp))
                         var sortDropdownExpanded by remember { mutableStateOf(false) }
+                        val isCategoryActive = currentCategory != CategoryFilter.ALL
+                        val activeBadgeColor = getCategoryFilterColor(currentCategory)
+
                         Box {
                             IconButton(
                                 onClick = { sortDropdownExpanded = true },
                                 modifier = Modifier
                                     .background(
-                                        color = if (sortDropdownExpanded) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent,
+                                        color = if (isCategoryActive) activeBadgeColor.copy(alpha = 0.18f)
+                                               else if (sortDropdownExpanded) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                                               else Color.Transparent,
                                         shape = CircleShape
+                                    )
+                                    .then(
+                                        if (isCategoryActive) Modifier.border(1.5.dp, activeBadgeColor.copy(alpha = 0.6f), CircleShape)
+                                        else Modifier
                                     )
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.FilterList,
-                                    contentDescription = "Sort Issue List"
+                                    contentDescription = "Sort Issue List",
+                                    tint = if (isCategoryActive) activeBadgeColor else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             IssueSortDropdown(
@@ -322,7 +349,8 @@ fun IssueTrackerScreenContent(
                                 onCategorySelected = onCategoryChange,
                                 selectedSort = currentSort,
                                 onSortSelected = onSortChange,
-                                onDismissRequest = { sortDropdownExpanded = false }
+                                onDismissRequest = { sortDropdownExpanded = false },
+                                categoryCounts = categoryCounts
                             )
                         }
                     }
@@ -332,18 +360,53 @@ fun IssueTrackerScreenContent(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        TextButton(onClick = onExport) {
-                            Text(
-                                text = "Export",
-                                fontSize = AppFontSizes.small,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = "Export",
-                                modifier = Modifier.size(18.dp)
-                            )
+                        val isCategoryActive = currentCategory != CategoryFilter.ALL
+                        val activeBadgeColor = getCategoryFilterColor(currentCategory)
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = onExport) {
+                                Text(
+                                    text = "Export",
+                                    fontSize = AppFontSizes.small,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = "Export",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            if (isCategoryActive) {
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = activeBadgeColor.copy(alpha = 0.15f),
+                                    border = BorderStroke(1.5.dp, activeBadgeColor.copy(alpha = 0.4f)),
+                                    modifier = Modifier.padding(start = 0.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .clickable { onCategoryChange(CategoryFilter.ALL) }
+                                            .padding(horizontal = 8.dp, vertical = 1.dp)
+                                    ) {
+                                        Text(
+                                            text = currentCategory.categoryName ?: "",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = activeBadgeColor
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Clear Category Filter",
+                                            tint = activeBadgeColor,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                    }
+                                }
+                            }
                         }
 
                         Row(
@@ -354,12 +417,13 @@ fun IssueTrackerScreenContent(
                                     1.dp,
                                     MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
                                     RoundedCornerShape(8.dp)
-                                )
+                                ),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             listOf(
-                                Pair(IssueFilter.ALL, "All (${issues.size})"),
-                                Pair(IssueFilter.OPEN, "Open (${issues.count { !it.isClosed }})"),
-                                Pair(IssueFilter.CLOSED, "Closed (${issues.count { it.isClosed }})")
+                                Pair(IssueFilter.ALL, "All (${categoryFilteredIssues.size})"),
+                                Pair(IssueFilter.OPEN, "Open (${categoryFilteredIssues.count { !it.isClosed }})"),
+                                Pair(IssueFilter.CLOSED, "Closed (${categoryFilteredIssues.count { it.isClosed }})")
                             ).forEach { (opt, label) ->
                                 val active = currentFilter == opt
                                 Box(
@@ -478,9 +542,20 @@ fun IssueTrackerScreenContent(
     }
 
     if (issueToDelete != null) {
+        val messageText = buildAnnotatedString {
+            append("Are you sure you want to remove issue ")
+
+            issueToDelete?.serialNumber?.let { number ->
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                    append("#$number")
+                }
+            }
+
+            append("?")
+        }
         DeleteConfirmationDialog(
             title = "Delete Issue",
-            message = "Are you sure you want to permanently delete issue #${issueToDelete?.serialNumber}?",
+            message = messageText,
             onConfirm = {
                 issueToDelete?.let { onDeleteIssue(it) }
                 issueToDelete = null
@@ -490,43 +565,120 @@ fun IssueTrackerScreenContent(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Issue Tracker Screen - All Issues")
 @Composable
 fun IssueTrackerScreenContentPreview() {
-    SoftTodoTheme (colorSchemeType = "simple") {
+    SoftTodoTheme(colorSchemeType = "minimal", themeMode = "light") {
         IssueTrackerScreenContent(
             app = TrackedApp("1", "Example Tracker App", "com.example.tracker", "1.0.0", isCustom = false),
-            colorSchemeType = "simple",
+            colorSchemeType = "minimal",
             issues = listOf(
                 IssueItem(
                     id = "1",
                     serialNumber = 1,
                     title = "Crash on login button click",
-                    description = "Immediate crash when tapping log in.",
+                    description = "Immediate crash when tapping log in.\n- Reproducible on Android 12",
                     category = "Issue",
                     priority = 1,
                     isClosed = false,
-                    timestamp = System.currentTimeMillis()
+                    timestamp = System.currentTimeMillis() - 86400000L,
+                    appVersion = "1.0.0"
                 ),
                 IssueItem(
                     id = "2",
                     serialNumber = 2,
-                    title = "Implement Settings screen",
-                    description = "Allow users to toggle dark mode.",
+                    title = "Implement Dark Mode support",
+                    description = "Allow users to toggle dark mode in Settings screen.",
                     category = "Feature",
                     priority = 2,
                     isClosed = true,
-                    timestamp = System.currentTimeMillis() - 3600000L,
-                    closedTimestamp = System.currentTimeMillis()
+                    timestamp = System.currentTimeMillis() - 172800000L,
+                    closedTimestamp = System.currentTimeMillis() - 3600000L,
+                    appVersion = "1.0.0",
+                    closedAppVersion = "1.1.0"
                 )
             ),
             searchQuery = "",
             currentFilter = IssueFilter.ALL,
+            currentCategory = CategoryFilter.ALL,
+            currentSort = IssueSort.NEWEST,
             highlightIssueId = null,
             onBack = {},
             onLaunch = {},
             onSearchQueryChange = {},
             onFilterChange = {},
+            onCategoryChange = {},
+            onSortChange = {},
+            onExport = {},
+            onToggleIssue = {},
+            onDeleteIssue = {},
+            onUpdateIssue = {},
+            onAddIssue = { _, _, _, _, _ -> },
+            onAddComment = { _, _ -> }
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Issue Tracker Screen - Category Filter Active")
+@Composable
+fun IssueTrackerScreenContentCategoryFilteredPreview() {
+    SoftTodoTheme(colorSchemeType = "minimal", themeMode = "light") {
+        IssueTrackerScreenContent(
+            app = TrackedApp("1", "Example Tracker App", "com.example.tracker", "1.0.0", isCustom = false),
+            colorSchemeType = "minimal",
+            issues = listOf(
+                IssueItem(
+                    id = "1",
+                    serialNumber = 1,
+                    title = "Integrate OAuth 2.0 Google Sign-In",
+                    description = "Add Google Sign-In button on authentication screen.",
+                    category = "Feature",
+                    priority = 2,
+                    isClosed = false,
+                    timestamp = System.currentTimeMillis() - 86400000L,
+                    appVersion = "1.0.0"
+                )
+            ),
+            searchQuery = "",
+            currentFilter = IssueFilter.ALL,
+            currentCategory = CategoryFilter.FEATURE,
+            currentSort = IssueSort.NEWEST,
+            highlightIssueId = null,
+            onBack = {},
+            onLaunch = {},
+            onSearchQueryChange = {},
+            onFilterChange = {},
+            onCategoryChange = {},
+            onSortChange = {},
+            onExport = {},
+            onToggleIssue = {},
+            onDeleteIssue = {},
+            onUpdateIssue = {},
+            onAddIssue = { _, _, _, _, _ -> },
+            onAddComment = { _, _ -> }
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Issue Tracker Screen - Empty State")
+@Composable
+fun IssueTrackerScreenContentEmptyPreview() {
+    SoftTodoTheme(colorSchemeType = "minimal", themeMode = "light") {
+        IssueTrackerScreenContent(
+            app = TrackedApp("1", "New Application Project", null, "1.0.0", isCustom = true),
+            colorSchemeType = "minimal",
+            issues = emptyList(),
+            searchQuery = "",
+            currentFilter = IssueFilter.ALL,
+            currentCategory = CategoryFilter.ALL,
+            currentSort = IssueSort.NEWEST,
+            highlightIssueId = null,
+            onBack = {},
+            onLaunch = null,
+            onSearchQueryChange = {},
+            onFilterChange = {},
+            onCategoryChange = {},
+            onSortChange = {},
             onExport = {},
             onToggleIssue = {},
             onDeleteIssue = {},

@@ -31,7 +31,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -43,7 +42,7 @@ import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -222,9 +221,6 @@ fun IssueCard(
                                         append("Closed ")
                                     }
                                     append(DateTimeUtils.formatShortDate(closedCal.time))
-                                    if (!issue.closedAppVersion.isNullOrBlank()) {
-                                        append(" (v${issue.closedAppVersion})")
-                                    }
                                 },
                                 fontSize = AppFontSizes.extraSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
@@ -288,7 +284,7 @@ fun IssueCard(
             if (expanded) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "v: ${issue.appVersion ?: "Unknown"}${if (issue.isClosed && !issue.closedAppVersion.isNullOrBlank()) " • Closed v: ${issue.closedAppVersion}" else ""}",
+                    text = "v${issue.appVersion ?: "Unknown"}${if (issue.isClosed && !issue.closedAppVersion.isNullOrBlank()) " • Closed in v${issue.closedAppVersion}" else ""}",
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier
                         .align(Alignment.End)
@@ -373,9 +369,12 @@ fun IssueCard(
                                 val commentFocusRequester = remember { FocusRequester() }
 
                                 if (commentToDeleteIndex != null) {
+                                    val messageText = buildAnnotatedString {
+                                        append("Are you sure you want to delete this comment?")
+                                    }
                                     DeleteConfirmationDialog(
                                         title = "Delete Comment",
-                                        message = "Are you sure you want to delete this comment?",
+                                        message = messageText,
                                         onConfirm = {
                                             val targetIdx = commentToDeleteIndex
                                             commentToDeleteIndex = null
@@ -508,7 +507,7 @@ fun IssueCard(
                                                         imageVector = Icons.Default.Edit,
                                                         contentDescription = "Edit Comment",
                                                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                                        modifier = Modifier.size(14.dp)
+                                                        modifier = Modifier.size(16.dp)
                                                     )
                                                 }
                                                 IconButton(
@@ -518,10 +517,10 @@ fun IssueCard(
                                                     modifier = Modifier.size(24.dp)
                                                 ) {
                                                     Icon(
-                                                        imageVector = Icons.Default.DeleteOutline,
+                                                        imageVector = Icons.Default.DeleteForever,
                                                         contentDescription = "Delete Comment",
                                                         tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f),
-                                                        modifier = Modifier.size(14.dp)
+                                                        modifier = Modifier.size(16.dp)
                                                     )
                                                 }
                                             }

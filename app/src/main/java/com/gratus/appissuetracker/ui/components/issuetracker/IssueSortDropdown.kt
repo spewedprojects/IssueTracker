@@ -49,7 +49,7 @@ import androidx.compose.runtime.*
 import com.gratus.appissuetracker.ui.theme.dialogContainerColor
 
 enum class CategoryFilter(val label: String, val categoryName: String?) {
-    ALL("All Categories", null),
+    ALL("All", null),
     ISSUE("Issues", "Issue"),
     FEATURE("Features", "Feature"),
     IDEA("Ideas", "Idea")
@@ -78,7 +78,8 @@ fun IssueSortDropdownItems(
     selectedCategory: CategoryFilter,
     onCategorySelected: (CategoryFilter) -> Unit,
     selectedSort: IssueSort,
-    onSortSelected: (IssueSort) -> Unit
+    onSortSelected: (IssueSort) -> Unit,
+    categoryCounts: Map<CategoryFilter, Int> = emptyMap()
 ) {
     // Section Header 1: Category Filter
     Text(
@@ -107,6 +108,8 @@ fun IssueSortDropdownItems(
                         val option = categoryOptions[i + j]
                         val isSelected = option == selectedCategory
                         val badgeColor = getCategoryFilterColor(option)
+                        val count = categoryCounts[option]
+                        val labelWithCount = if (count != null) "${option.label} ($count)" else option.label
 
                         Surface(
                             modifier = Modifier
@@ -123,15 +126,15 @@ fun IssueSortDropdownItems(
                             )
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center
                             ) {
                                 Text(
-                                    text = option.label,
-                                    fontSize = 11.sp,
+                                    text = labelWithCount,
+                                    fontSize = 10.5.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) badgeColor else badgeColor.copy(alpha = 0.6f)
+                                    color = if (isSelected) badgeColor else badgeColor.copy(alpha = 0.7f)
                                 )
                             }
                         }
@@ -191,7 +194,8 @@ fun IssueSortDropdownContent(
     selectedCategory: CategoryFilter = CategoryFilter.ALL,
     onCategorySelected: (CategoryFilter) -> Unit = {},
     selectedSort: IssueSort = IssueSort.NEWEST,
-    onSortSelected: (IssueSort) -> Unit = {}
+    onSortSelected: (IssueSort) -> Unit = {},
+    categoryCounts: Map<CategoryFilter, Int> = emptyMap()
 ) {
     Card(
         modifier = modifier
@@ -203,7 +207,7 @@ fun IssueSortDropdownContent(
                 shape = RoundedCornerShape(20.dp)
             ),
         shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.dialogContainerColor),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.dialogContainerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
         Column(
@@ -213,7 +217,8 @@ fun IssueSortDropdownContent(
                 selectedCategory = selectedCategory,
                 onCategorySelected = onCategorySelected,
                 selectedSort = selectedSort,
-                onSortSelected = onSortSelected
+                onSortSelected = onSortSelected,
+                categoryCounts = categoryCounts
             )
         }
     }
@@ -228,6 +233,7 @@ fun IssueSortDropdown(
     selectedSort: IssueSort,
     onSortSelected: (IssueSort) -> Unit,
     onDismissRequest: () -> Unit,
+    categoryCounts: Map<CategoryFilter, Int> = emptyMap()
 ) {
     DropdownMenu(
         expanded = expanded,
@@ -244,13 +250,14 @@ fun IssueSortDropdown(
             selectedCategory = selectedCategory,
             onCategorySelected = {
                 onCategorySelected(it)
-                onDismissRequest()
+                //onDismissRequest()
             },
             selectedSort = selectedSort,
             onSortSelected = {
                 onSortSelected(it)
                 onDismissRequest()
-            }
+            },
+            categoryCounts = categoryCounts
         )
     }
 }
@@ -260,6 +267,14 @@ fun IssueSortDropdown(
 fun IssueSortDropdownNavigablePreview() {
     var selectedCategory by remember { mutableStateOf(CategoryFilter.ALL) }
     var selectedSort by remember { mutableStateOf(IssueSort.NEWEST) }
+    val mockCategoryCounts = remember {
+        mapOf(
+            CategoryFilter.ALL to 12,
+            CategoryFilter.ISSUE to 5,
+            CategoryFilter.FEATURE to 4,
+            CategoryFilter.IDEA to 3
+        )
+    }
 
     SoftTodoTheme (colorSchemeType = "colorful") {
         Box(
@@ -272,7 +287,8 @@ fun IssueSortDropdownNavigablePreview() {
                 selectedCategory = selectedCategory,
                 onCategorySelected = { selectedCategory = it },
                 selectedSort = selectedSort,
-                onSortSelected = { selectedSort = it }
+                onSortSelected = { selectedSort = it },
+                categoryCounts = mockCategoryCounts
             )
         }
     }

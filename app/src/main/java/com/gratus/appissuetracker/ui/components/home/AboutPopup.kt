@@ -25,6 +25,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Link
@@ -35,11 +37,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import com.gratus.appissuetracker.BuildConfig
 import com.gratus.appissuetracker.ui.theme.AppFontSizes
 import com.gratus.appissuetracker.ui.theme.SoftTodoTheme
 import com.gratus.appissuetracker.ui.theme.dialogContainerColor
@@ -93,18 +99,34 @@ fun AboutPopupContent(
                         context.startActivity(intent)
                     }
                 ) {
+                    // Annotated string
+                    val annotatedText = buildAnnotatedString {
+                        append("Maintainer – Spewed Projects ")
+                        appendInlineContent("linkIcon", "[icon]")
+                    }
+
+                    val inlineContent = mapOf(
+                        "linkIcon" to InlineTextContent(
+                            Placeholder(
+                                width = 16.sp,
+                                height = 16.sp,
+                                placeholderVerticalAlign = PlaceholderVerticalAlign.Center
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Link,
+                                contentDescription = "Open maintainer page",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    )
+
                     Text(
-                        text = "Maintainer – Spewed Projects",
+                        text = annotatedText,
+                        inlineContent = inlineContent,
                         fontSize = AppFontSizes.small,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        imageVector = Icons.Default.Link,
-                        contentDescription = "Open maintainer page",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
                     )
                 }
                 Row(
@@ -136,6 +158,14 @@ fun AboutPopupContent(
                     )
                 }
             }
+            Text(
+                modifier = Modifier.align(Alignment.End),
+                text = "v${BuildConfig.VERSION_NAME}" + " (${BuildConfig.VERSION_CODE})",
+                fontSize = AppFontSizes.pico,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                lineHeight = 6.sp
+            )
         }
     }
 }

@@ -18,7 +18,6 @@
 
 package com.gratus.appissuetracker.ui.screens
 
-import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -50,6 +49,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gratus.appissuetracker.R
@@ -58,7 +60,6 @@ import com.gratus.appissuetracker.ui.InstalledAppInfo
 import com.gratus.appissuetracker.ui.MainViewModel
 import com.gratus.appissuetracker.ui.theme.AppFontSizes
 import com.gratus.appissuetracker.ui.theme.SoftTodoTheme
-import com.gratus.appissuetracker.ui.theme.dialogContainerColor
 import com.gratus.appissuetracker.ui.components.home.*
 import com.gratus.appissuetracker.ui.components.DeleteConfirmationDialog
 
@@ -422,9 +423,20 @@ fun HomeScreenContent(
 
     // Delete App Confirmation Dialog
     if (appToDelete != null) {
+        val messageText = buildAnnotatedString {
+            append("Are you sure you want to remove ")
+
+            appToDelete?.name?.let { name ->
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                    append(name)
+                }
+            }
+
+            append("?\nThis will permanently delete all its tracked issues.")
+        }
         DeleteConfirmationDialog(
             title = "Delete Project",
-            message = "Are you sure you want to remove '${appToDelete?.name}'? This will permanently delete all its tracked issues.",
+            message = messageText,
             onConfirm = {
                 appToDelete?.let { onDeleteApp(it) }
                 appToDelete = null

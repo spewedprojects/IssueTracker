@@ -15,8 +15,8 @@ android {
         applicationId = "com.gratus.appissuetracker"
         minSdk = 27
         targetSdk = 37
-        versionCode = 10
-        versionName = "2.6.0"
+        versionCode = 11
+        versionName = "2.6.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -34,6 +34,10 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
+    }
+    buildFeatures {
+        compose = true
+        buildConfig = true
     }
 }
 

@@ -25,12 +25,14 @@
     <td>Issues Collapsed</td>
     <td>Issues Expanded</td>
     <td>Sort options</td>
+    <td>Sort Indicators</td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/issueScreen/issuescreen_02.png" width="100%"></td>
     <td><img src="docs/screenshots/issueScreen/issuescreen_01.png" width="100%"></td>
     <td><img src="docs/screenshots/issueScreen/issuescreen_03.png" width="100%"></td>
     <td><img src="docs/screenshots/issueScreen/issuescreen_04.png" width="100%"></td>
+    <td><img src="docs/screenshots/issueScreen/issuescreen_05.png" width="100%"></td>
   </tr>
 </table>
 
