@@ -18,6 +18,7 @@
 
 package com.gratus.appissuetracker.ui.components.home
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -143,7 +144,8 @@ fun AddAppDialogContent(
         modifier = modifier
             .fillMaxWidth(0.85f)
             .heightIn(max = 750.dp),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(0.5f)),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.dialogContainerColor,
             contentColor = MaterialTheme.colorScheme.onSurface
@@ -285,6 +287,7 @@ fun AddAppDialogContent(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Button(
+                    shape = RoundedCornerShape(12.dp),
                     onClick = {
                         if (activeTab == 0) {
                             if (customName.isNotBlank()) {

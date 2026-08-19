@@ -49,6 +49,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -92,7 +93,7 @@ fun IssueCard(
     initialExpanded: Boolean = false,
     highlighted: Boolean = false
 ) {
-    var expanded by remember { mutableStateOf(initialExpanded) }
+    var expanded by rememberSaveable { mutableStateOf(initialExpanded) }
     val rotation by animateFloatAsState(targetValue = if (expanded) 180f else 0f)
     val context = LocalContext.current
 
@@ -294,7 +295,7 @@ fun IssueCard(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
                 Spacer(modifier = Modifier.height(12.dp))
                 
-                var commentsExpanded by remember { mutableStateOf(true) }
+                var commentsExpanded by rememberSaveable { mutableStateOf(true) }
                 
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
@@ -359,13 +360,13 @@ fun IssueCard(
                                     .padding(vertical = 2.dp),
                                 verticalArrangement = Arrangement.spacedBy(2.dp)
                             ) {
-                                var editingCommentIndex by remember { mutableStateOf<Int?>(null) }
-                                var editingCommentText by remember { mutableStateOf("") }
+                                var editingCommentIndex by rememberSaveable { mutableStateOf<Int?>(null) }
+                                var editingCommentText by rememberSaveable { mutableStateOf("") }
                                 var commentToDeleteIndex by remember { mutableStateOf<Int?>(null) }
                                 var showDiscardCommentEditDialog by remember { mutableStateOf(false) }
                                 var showDiscardNewCommentDialog by remember { mutableStateOf(false) }
-                                var isAddingComment by remember { mutableStateOf(false) }
-                                var newCommentText by remember { mutableStateOf("") }
+                                var isAddingComment by rememberSaveable { mutableStateOf(false) }
+                                var newCommentText by rememberSaveable { mutableStateOf("") }
                                 val commentFocusRequester = remember { FocusRequester() }
 
                                 if (commentToDeleteIndex != null) {

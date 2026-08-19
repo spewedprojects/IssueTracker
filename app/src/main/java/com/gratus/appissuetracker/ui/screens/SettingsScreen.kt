@@ -35,7 +35,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.gratus.appissuetracker.ui.MainViewModel
-import com.gratus.appissuetracker.ui.components.home.fadingEdges
 import com.gratus.appissuetracker.ui.theme.SoftTodoTheme
 import com.gratus.appissuetracker.ui.components.settings.*
 
@@ -85,7 +84,8 @@ fun SettingsScreen(
                 importLauncher.launch(arrayOf("*/*"))
             }
         },
-        onBack = onBack
+        onBack = onBack,
+        colorSchemeType = String(),
     )
 }
 
@@ -104,7 +104,8 @@ fun SettingsScreenContent(
     onSortModeChange: (String) -> Unit,
     onExportBackups: () -> Unit,
     onImportBackups: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    colorSchemeType: String
 ) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -131,12 +132,14 @@ fun SettingsScreenContent(
         ) {
             SortingSettingsCard(
                 activeSortMode = activeSortMode,
-                onSortModeChange = onSortModeChange
+                onSortModeChange = onSortModeChange,
+                colorSchemeType = String(),
             )
 
             AestheticsSettingsCard(
                 activeTheme = activeTheme,
                 activeScheme = activeScheme,
+                colorSchemeType = String(),
                 colorfulHueShift = colorfulHueShift,
                 colorfulSatScale = colorfulSatScale,
                 onThemeChange = onThemeChange,
@@ -147,7 +150,8 @@ fun SettingsScreenContent(
 
             BackupSettingsCard(
                 onExportBackups = onExportBackups,
-                onImportBackups = onImportBackups
+                onImportBackups = onImportBackups,
+                colorSchemeType = String(),
             )
         }
     }
@@ -170,12 +174,13 @@ fun SettingsScreenMinimalPreview() {
             onSortModeChange = {},
             onExportBackups = {},
             onImportBackups = {},
-            onBack = {}
+            onBack = {},
+            colorSchemeType = String(),
         )
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, backgroundColor = 0XFF000000)
 @Composable
 fun SettingsScreenColorfulDarkPreview() {
     SoftTodoTheme(themeMode = "dark", colorSchemeType = "colorful") {
@@ -192,7 +197,8 @@ fun SettingsScreenColorfulDarkPreview() {
             onSortModeChange = {},
             onExportBackups = {},
             onImportBackups = {},
-            onBack = {}
+            onBack = {},
+            colorSchemeType = String()
         )
     }
 }
@@ -204,6 +210,7 @@ fun SettingsScreenSimplePreview() {
         SettingsScreenContent(
             activeTheme = "auto",
             activeScheme = "simple",
+            colorSchemeType = "simple",
             colorfulHueShift = 0f,
             colorfulSatScale = 1f,
             activeSortMode = "added_date",

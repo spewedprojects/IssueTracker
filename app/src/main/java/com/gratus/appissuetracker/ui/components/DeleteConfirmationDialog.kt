@@ -19,6 +19,7 @@
 
 package com.gratus.appissuetracker.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -99,6 +100,7 @@ fun DeleteConfirmationDialogContent(
                 shape = RoundedCornerShape(20.dp)
             ),
         shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(0.5f)),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.dialogContainerColor,
             contentColor = MaterialTheme.colorScheme.onSurface

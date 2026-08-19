@@ -18,6 +18,8 @@
 
 package com.gratus.appissuetracker.ui.components.settings
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,17 +33,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gratus.appissuetracker.ui.theme.AppFontSizes
 import androidx.compose.ui.tooling.preview.Preview
 import com.gratus.appissuetracker.ui.theme.SoftTodoTheme
+import com.gratus.appissuetracker.R
 
 @Composable
 fun AestheticsSettingsCard(
     activeTheme: String,
     activeScheme: String,
+    colorSchemeType: String,
     colorfulHueShift: Float,
     colorfulSatScale: Float,
     onThemeChange: (String) -> Unit,
@@ -52,7 +58,15 @@ fun AestheticsSettingsCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = when (colorSchemeType) {
+            "simple" -> BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+            )
+            "system" -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+            )
+            else -> BorderStroke(0.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.0f)
+            )
+        },
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -134,95 +148,205 @@ fun AestheticsSettingsCard(
                     val isSelected = activeScheme == schemeKey
                     var customizerExpanded by remember { mutableStateOf(false) }
 
-                    Column {
-                        Box(
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (isSelected) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+                            )
+                            .border(
+                                1.dp,
+                                if (isSelected) MaterialTheme.colorScheme.secondary
+                                else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+                                RoundedCornerShape(12.dp)
+                            )
+                            .clickable { onColorSchemeChange(schemeKey) }
+                            .animateContentSize()
+                    ) {
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(
-                                    if (isSelected) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
-                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
-                                )
-                                .border(
-                                    1.dp,
-                                    if (isSelected) MaterialTheme.colorScheme.secondary
-                                    else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
-                                    RoundedCornerShape(12.dp)
-                                )
-                                .clickable { onColorSchemeChange(schemeKey) }
-                                .padding(14.dp)
+                                .padding(14.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                modifier = Modifier.weight(1f),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.Top
                             ) {
-                                Row(
-                                    modifier = Modifier.weight(1f),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.Top
-                                ) {
-                                    Icon(
-                                        imageVector = when (schemeKey) {
-                                            "minimal"  -> Icons.Default.Spa
-                                            "simple"   -> Icons.Default.BrightnessLow
-                                            "colorful" -> Icons.Default.Palette
-                                            else       -> Icons.Default.SettingsSuggest
-                                        },
-                                        contentDescription = null,
-                                        tint = if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline,
-                                        modifier = Modifier.size(18.dp)
+                                Icon(
+                                    imageVector = when (schemeKey) {
+                                        "minimal" -> Icons.Default.Spa
+                                        "simple" -> Icons.Default.BrightnessLow
+                                        "colorful" -> Icons.Default.Palette
+                                        else -> Icons.Default.SettingsSuggest
+                                    },
+                                    contentDescription = null,
+                                    tint = if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline,
+                                    modifier = Modifier.size(18.dp).offset(x = 0.dp, y = 3.dp)
+                                )
+                                Column {
+                                    Text(
+                                        text = name,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = AppFontSizes.large,
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
-                                    Column {
+                                    Text(
+                                        text = desc,
+                                        fontSize = AppFontSizes.small,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                        lineHeight = AppFontSizes.medium
+                                    )
+                                }
+                            }
+
+                            if (schemeKey == "colorful") {
+                                IconButton(
+                                    onClick = {
+                                        onColorSchemeChange(schemeKey)
+                                        customizerExpanded = !customizerExpanded
+                                    },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    val discoverTuneIcon = ImageVector.vectorResource(R.drawable.discover_tune_18dp)
+                                    Icon(
+                                        imageVector = discoverTuneIcon,
+                                        contentDescription = "Customize colorful palette",
+                                        tint = if (isSelected) MaterialTheme.colorScheme.secondary
+                                        else MaterialTheme.colorScheme.outline,
+                                        modifier = Modifier.size(18.dp)//.rotate(90f) // remove rotation later if you like it otherwise
+                                    )
+                                }
+                            }
+
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = { onColorSchemeChange(schemeKey) },
+                                colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.secondary)
+                            )
+                        }
+
+                        if (schemeKey == "colorful" && isSelected && customizerExpanded) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 14.dp),
+                                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
+                            )
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                val previewPrimary = MaterialTheme.colorScheme.primary
+                                val previewSecondary = MaterialTheme.colorScheme.secondary
+                                val previewTertiary = MaterialTheme.colorScheme.tertiary
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Preview:",
+                                        fontSize = AppFontSizes.small,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    listOf(previewPrimary, previewSecondary, previewTertiary).forEach { swatch ->
+                                        Box(
+                                            modifier = Modifier
+                                                .size(20.dp)
+                                                .clip(CircleShape)
+                                                .background(swatch)
+                                                .border(
+                                                    1.dp,
+                                                    MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                                    CircleShape
+                                                )
+                                        )
+                                    }
+                                }
+
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
                                         Text(
-                                            text = name,
+                                            text = "Hue Shift",
+                                            fontSize = AppFontSizes.small,
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = AppFontSizes.large,
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
-                                            text = desc,
+                                            text = if (colorfulHueShift == 0f) "Default"
+                                            else "%+.0f°".format(colorfulHueShift),
                                             fontSize = AppFontSizes.small,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                            lineHeight = AppFontSizes.medium
+                                            color = MaterialTheme.colorScheme.secondary
                                         )
                                     }
+                                    Slider(
+                                        value = colorfulHueShift,
+                                        onValueChange = onColorfulHueShiftChange,
+                                        valueRange = -80f..60f,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = SliderDefaults.colors(
+                                            thumbColor = MaterialTheme.colorScheme.secondary,
+                                            activeTrackColor = MaterialTheme.colorScheme.secondary
+                                        )
+                                    )
                                 }
 
-                                // Palette customizer button for colorful scheme
-                                if (schemeKey == "colorful") {
-                                    IconButton(
-                                        onClick = {
-                                            onColorSchemeChange(schemeKey)
-                                            customizerExpanded = !customizerExpanded
-                                        },
-                                        modifier = Modifier.size(32.dp)
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Tune,
-                                            contentDescription = "Customize colorful palette",
-                                            tint = if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline,
-                                            modifier = Modifier.size(18.dp)
+                                        Text(
+                                            text = "Saturation",
+                                            fontSize = AppFontSizes.small,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = if (colorfulSatScale == 1f) "Default"
+                                            else "%.2f×".format(colorfulSatScale),
+                                            fontSize = AppFontSizes.small,
+                                            color = MaterialTheme.colorScheme.secondary
                                         )
                                     }
+                                    Slider(
+                                        value = colorfulSatScale,
+                                        onValueChange = onColorfulSatScaleChange,
+                                        valueRange = 0.7f..1.3f,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = SliderDefaults.colors(
+                                            thumbColor = MaterialTheme.colorScheme.secondary,
+                                            activeTrackColor = MaterialTheme.colorScheme.secondary
+                                        )
+                                    )
                                 }
 
-                                RadioButton(
-                                    selected = isSelected,
-                                    onClick = { onColorSchemeChange(schemeKey) },
-                                    colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.secondary)
-                                )
+                                TextButton(
+                                    onClick = {
+                                        onColorfulHueShiftChange(0f)
+                                        onColorfulSatScaleChange(1f)
+                                    },
+                                    modifier = Modifier.align(Alignment.End)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Reset to Default",
+                                        fontSize = AppFontSizes.small
+                                    )
+                                }
                             }
-                        }
-
-                        // Customizer Sliders Panel (only for colorful scheme)
-                        if (schemeKey == "colorful" && customizerExpanded) {
-                            ColorfulCustomizerPanel(
-                                colorfulHueShift = colorfulHueShift,
-                                colorfulSatScale = colorfulSatScale,
-                                onColorfulHueShiftChange = onColorfulHueShiftChange,
-                                onColorfulSatScaleChange = onColorfulSatScaleChange
-                            )
                         }
                     }
                 }
@@ -232,116 +356,23 @@ fun AestheticsSettingsCard(
 }
 
 @Composable
-fun ColorfulCustomizerPanel(
-    colorfulHueShift: Float,
-    colorfulSatScale: Float,
-    onColorfulHueShiftChange: (Float) -> Unit,
-    onColorfulSatScaleChange: (Float) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp))
-            .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.25f))
-            .border(
-                1.dp,
-                MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
-                RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp)
-            )
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // live previews
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = "Preview colors:", fontSize = AppFontSizes.small, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.tertiary).forEach { swatch ->
-                Box(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clip(CircleShape)
-                        .background(swatch)
-                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), CircleShape)
-                )
-            }
-        }
-
-        // Hue shift slider
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(text = "Hue Shift", fontSize = AppFontSizes.small, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                Text(
-                    text = if (colorfulHueShift == 0f) "Default" else String.format(java.util.Locale.US, "%+.0f°", colorfulHueShift),
-                    fontSize = AppFontSizes.small,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-            }
-            Slider(
-                value = colorfulHueShift,
-                onValueChange = onColorfulHueShiftChange,
-                valueRange = -80f..60f,
-                modifier = Modifier.fillMaxWidth(),
-                colors = SliderDefaults.colors(
-                    thumbColor = MaterialTheme.colorScheme.secondary,
-                    activeTrackColor = MaterialTheme.colorScheme.secondary
-                )
-            )
-        }
-
-        // Saturation scale slider
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(text = "Saturation", fontSize = AppFontSizes.small, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                Text(
-                    text = if (colorfulSatScale == 1f) "Default" else String.format(java.util.Locale.US, "%.2f×", colorfulSatScale),
-                    fontSize = AppFontSizes.small,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-            }
-            Slider(
-                value = colorfulSatScale,
-                onValueChange = onColorfulSatScaleChange,
-                valueRange = 0.7f..1.3f,
-                modifier = Modifier.fillMaxWidth(),
-                colors = SliderDefaults.colors(
-                    thumbColor = MaterialTheme.colorScheme.secondary,
-                    activeTrackColor = MaterialTheme.colorScheme.secondary
-                )
-            )
-        }
-
-        // Reset button
-        TextButton(
-            onClick = {
-                onColorfulHueShiftChange(0f)
-                onColorfulSatScaleChange(1f)
-            },
-            modifier = Modifier.align(Alignment.End)
-        ) {
-            Icon(imageVector = Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(14.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("Reset", fontSize = AppFontSizes.small)
-        }
-    }
-}
-
-@Composable
 fun BackupSettingsCard(
     onExportBackups: () -> Unit,
-    onImportBackups: () -> Unit
+    onImportBackups: () -> Unit,
+    colorSchemeType: String
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = when (colorSchemeType) {
+            "simple" -> BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+            )
+            "system" -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+            )
+            else -> BorderStroke(0.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.0f)
+            )
+        },
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -360,7 +391,10 @@ fun BackupSettingsCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(text = "Saves individual JSON logs for all applications inside Documents/IssueTrackerBackups.", fontSize = AppFontSizes.small, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                Text(
+                    text = "Saves individual JSON logs for all applications inside Documents/IssueTrackerBackups.", fontSize = AppFontSizes.small, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    lineHeight = AppFontSizes.extraLarge
+                )
                 // Export to Device Button
                 Button(
                     onClick = { onExportBackups() },
@@ -373,7 +407,10 @@ fun BackupSettingsCard(
                     Text("Export to Device")
                 }
 
-                Text(text = "Load exported JSON files. Imports apps and restores their tracked issues.", fontSize = AppFontSizes.small, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                Text(
+                    text = "Load exported JSON files. Imports apps and restores their tracked issues.", fontSize = AppFontSizes.small, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    lineHeight = AppFontSizes.extraLarge
+                )
 
                 // Import & Restore Backup Button
                 OutlinedButton(
@@ -394,11 +431,12 @@ fun BackupSettingsCard(
 @Preview(showBackground = true)
 @Composable
 fun AestheticsSettingsCardMinimalPreview() {
-    SoftTodoTheme(colorSchemeType = "minimal", themeMode = "light") {
+    SoftTodoTheme(colorSchemeType = "system", themeMode = "light") {
         Box(modifier = Modifier.padding(16.dp)) {
             AestheticsSettingsCard(
                 activeTheme = "light",
-                activeScheme = "minimal",
+                activeScheme = "system",
+                colorSchemeType = "system",
                 colorfulHueShift = 0f,
                 colorfulSatScale = 1f,
                 onThemeChange = {},
@@ -410,7 +448,7 @@ fun AestheticsSettingsCardMinimalPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, backgroundColor = 0XFF000000)
 @Composable
 fun AestheticsSettingsCardColorfulPreview() {
     SoftTodoTheme(colorSchemeType = "colorful", themeMode = "dark") {
@@ -418,25 +456,11 @@ fun AestheticsSettingsCardColorfulPreview() {
             AestheticsSettingsCard(
                 activeTheme = "dark",
                 activeScheme = "colorful",
+                colorSchemeType = "colorful",
                 colorfulHueShift = 15f,
                 colorfulSatScale = 1.2f,
                 onThemeChange = {},
                 onColorSchemeChange = {},
-                onColorfulHueShiftChange = {},
-                onColorfulSatScaleChange = {}
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun ColorfulCustomizerPanelPreview() {
-    SoftTodoTheme(colorSchemeType = "colorful", themeMode = "light") {
-        Box(modifier = Modifier.padding(16.dp)) {
-            ColorfulCustomizerPanel(
-                colorfulHueShift = 10f,
-                colorfulSatScale = 1.1f,
                 onColorfulHueShiftChange = {},
                 onColorfulSatScaleChange = {}
             )
@@ -451,7 +475,8 @@ fun BackupSettingsCardPreview() {
         Box(modifier = Modifier.padding(16.dp)) {
             BackupSettingsCard(
                 onExportBackups = {},
-                onImportBackups = {}
+                onImportBackups = {},
+                colorSchemeType = "minmal"
             )
         }
     }
@@ -460,12 +485,21 @@ fun BackupSettingsCardPreview() {
 @Composable
 fun SortingSettingsCard(
     activeSortMode: String,
-    onSortModeChange: (String) -> Unit
+    onSortModeChange: (String) -> Unit,
+    colorSchemeType: String
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = when (colorSchemeType) {
+            "simple" -> BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+            )
+            "system" -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+            )
+            else -> BorderStroke(0.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.0f)
+            )
+        },
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -547,7 +581,8 @@ fun SortingSettingsCardPreview() {
         Box(modifier = Modifier.padding(16.dp)) {
             SortingSettingsCard(
                 activeSortMode = "added_date",
-                onSortModeChange = {}
+                onSortModeChange = {},
+                colorSchemeType = "minimal"
             )
         }
     }

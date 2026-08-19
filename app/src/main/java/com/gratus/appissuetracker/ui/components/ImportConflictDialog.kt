@@ -18,6 +18,7 @@
 
 package com.gratus.appissuetracker.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -106,6 +107,7 @@ fun ImportConflictDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportConflictDialogContent(
+    modifier: Modifier = Modifier,
     task: MainViewModel.PendingImportTask,
     trackedApps: List<TrackedApp>,
     installedApps: List<InstalledAppInfo>,
@@ -118,7 +120,6 @@ fun ImportConflictDialogContent(
         selectedInstalledApp: InstalledAppInfo?
     ) -> Unit,
     initialTargetOption: Int = 0,
-    modifier: Modifier = Modifier,
     onHasChangesChanged: (Boolean) -> Unit = {}
 ) {
     var targetOption by remember { mutableStateOf(initialTargetOption) } // 0 = New Custom, 1 = Existing, 2 = Installed
@@ -175,7 +176,8 @@ fun ImportConflictDialogContent(
     Card(
         modifier = Modifier.fillMaxWidth(0.85f)
             .heightIn(max = 750.dp),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(0.5f)),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.dialogContainerColor,
             contentColor = MaterialTheme.colorScheme.onSurface
@@ -388,6 +390,7 @@ fun ImportConflictDialogContent(
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
+                        shape = RoundedCornerShape(12.dp),
                         onClick = {
                             onImport(
                                 targetOption,

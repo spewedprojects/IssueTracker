@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import kotlin.collections.copy
 
 // Standard light/dark fallback dynamic styling palletes
 private val FallbackDarkColorScheme = darkColorScheme(
@@ -84,27 +85,49 @@ fun Color.shiftHueSat(hueDelta: Float, satScale: Float): Color {
 fun buildColorfulColorScheme(isDark: Boolean, hueShift: Float, satScale: Float): ColorScheme {
     return if (isDark) {
         darkColorScheme(
-            primary   = ColorfulDarkPrimary.shiftHueSat(hueShift, satScale),
-            onPrimary = SimpleLightBg,
-            secondary = ColorfulDarkSecondary.shiftHueSat(hueShift, satScale),
-            tertiary  = ColorfulDarkTertiary.shiftHueSat(hueShift, satScale),
-            background = ColorfulDarkBg.shiftHueSat(hueShift, satScale),
-            onBackground = ColorfulDarkOnBg,
-            surface   = ColorfulDarkCard.shiftHueSat(hueShift, satScale),
-            onSurface = ColorfulDarkOnBg,
-            outline   = ColorfulDarkOnBg.copy(alpha = 0.2f)
+            primary            = ColorfulDarkPrimary.shiftHueSat(hueShift, satScale),
+            onPrimary          = SimpleLightBg,
+            primaryContainer   = ColorfulDarkPrimaryContainer.shiftHueSat(hueShift, satScale),
+            onPrimaryContainer = ColorfulDarkOnPrimaryContainer.shiftHueSat(hueShift, satScale),
+            secondary          = ColorfulDarkSecondary.shiftHueSat(hueShift, satScale),
+            onSecondary        = SimpleLightBg,
+            secondaryContainer = ColorfulDarkSecondaryContainer.shiftHueSat(hueShift, satScale),
+            onSecondaryContainer = ColorfulDarkOnSecondaryContainer.shiftHueSat(hueShift, satScale),
+            tertiary           = ColorfulDarkTertiary.shiftHueSat(hueShift, satScale),
+            onTertiary         = SimpleLightBg,
+            tertiaryContainer  = ColorfulDarkTertiaryContainer.shiftHueSat(hueShift, satScale),
+            onTertiaryContainer = ColorfulDarkOnTertiaryContainer.shiftHueSat(hueShift, satScale),
+            background         = ColorfulDarkBg.shiftHueSat(hueShift, satScale),
+            onBackground       = ColorfulDarkOnBg,
+            surface            = ColorfulDarkCard.shiftHueSat(hueShift, satScale),
+            onSurface          = ColorfulDarkOnBg,
+            surfaceVariant     = ColorfulDarkSurfaceVariant.shiftHueSat(hueShift, satScale),
+            onSurfaceVariant   = ColorfulDarkOnSurfaceVariant.shiftHueSat(hueShift, satScale),
+            outline            = ColorfulDarkOnBg.copy(alpha = 0.2f),
+            outlineVariant     = ColorfulDarkOnBg.copy(alpha = 0.1f)
         )
     } else {
         lightColorScheme(
-            primary   = ColorfulLightPrimary.shiftHueSat(hueShift, satScale),
-            onPrimary = SimpleLightBg,
-            secondary = ColorfulLightSecondary.shiftHueSat(hueShift, satScale),
-            tertiary  = ColorfulLightTertiary.shiftHueSat(hueShift, satScale),
-            background = ColorfulLightBg.shiftHueSat(hueShift, satScale),
-            onBackground = ColorfulLightOnBg,
-            surface   = ColorfulLightCard.shiftHueSat(hueShift, satScale),
-            onSurface = ColorfulLightOnBg,
-            outline   = ColorfulLightOnBg.copy(alpha = 0.1f)
+            primary            = ColorfulLightPrimary.shiftHueSat(hueShift, satScale),
+            onPrimary          = SimpleLightBg,
+            primaryContainer   = ColorfulLightPrimaryContainer.shiftHueSat(hueShift, satScale),
+            onPrimaryContainer = ColorfulLightOnPrimaryContainer.shiftHueSat(hueShift, satScale),
+            secondary          = ColorfulLightSecondary.shiftHueSat(hueShift, satScale),
+            onSecondary        = SimpleLightBg,
+            secondaryContainer = ColorfulLightSecondaryContainer.shiftHueSat(hueShift, satScale),
+            onSecondaryContainer = ColorfulLightOnSecondaryContainer.shiftHueSat(hueShift, satScale),
+            tertiary           = ColorfulLightTertiary.shiftHueSat(hueShift, satScale),
+            onTertiary         = SimpleLightBg,
+            tertiaryContainer  = ColorfulLightTertiaryContainer.shiftHueSat(hueShift, satScale),
+            onTertiaryContainer = ColorfulLightOnTertiaryContainer.shiftHueSat(hueShift, satScale),
+            background         = ColorfulLightBg.shiftHueSat(hueShift, satScale),
+            onBackground       = ColorfulLightOnBg,
+            surface            = ColorfulLightCard.shiftHueSat(hueShift, satScale),
+            onSurface          = ColorfulLightOnBg,
+            surfaceVariant     = ColorfulLightSurfaceVariant.shiftHueSat(hueShift, satScale),
+            onSurfaceVariant   = ColorfulLightOnSurfaceVariant.shiftHueSat(hueShift, satScale),
+            outline            = ColorfulLightOnBg.copy(alpha = 0.1f),
+            outlineVariant     = ColorfulLightOnBg.copy(alpha = 0.05f)
         )
     }
 }

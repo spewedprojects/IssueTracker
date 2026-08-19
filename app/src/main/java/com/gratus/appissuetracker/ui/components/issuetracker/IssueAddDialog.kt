@@ -176,7 +176,8 @@ fun IssueAddDialogContent(
     Card(
         modifier = modifier
             .fillMaxWidth(0.88f),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(0.5f)),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.dialogContainerColor,
             contentColor = MaterialTheme.colorScheme.onSurface
@@ -270,7 +271,7 @@ fun IssueAddDialogContent(
                     FilterChip(
                         selected = isSelected,
                         onClick = { priority = prio },
-                        label = { Text(prio) },
+                        label = { Text("$prio (${IssueItem.getPriorityFromLabel(prio)})") },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = prioColor.copy(alpha = 0.2f),
                             selectedLabelColor = prioColor,
@@ -358,6 +359,7 @@ fun IssueAddDialogContent(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Button(
+                    shape = RoundedCornerShape(14.dp),
                     onClick = { onSave(title, description.text, category, priority, versionName) },
                     enabled = title.isNotBlank() && (versionName.isNotBlank() || !isVersionEditable)
                 ) {
@@ -368,7 +370,7 @@ fun IssueAddDialogContent(
     }
 }
 
-@Preview(showBackground = true, name = "Add/Edit Issue Dialog", backgroundColor = 0xFF000000)
+@Preview(showBackground = false, name = "Add/Edit Issue Dialog", backgroundColor = 0xFF000000, widthDp = 460, heightDp = 840)
 @Composable
 fun IssueAddDialogPreview() {
     val previewIssues = listOf(
