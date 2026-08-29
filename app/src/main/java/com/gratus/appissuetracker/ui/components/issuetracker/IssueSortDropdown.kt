@@ -47,6 +47,7 @@ import com.gratus.appissuetracker.ui.theme.SoftTodoTheme
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.*
 import com.gratus.appissuetracker.ui.theme.dialogContainerColor
+import com.gratus.appissuetracker.ui.utils.GridCornerShapeProvider
 
 enum class CategoryFilter(val label: String, val categoryName: String?) {
     ALL("All", null),
@@ -98,6 +99,8 @@ fun IssueSortDropdownItems(
             .padding(horizontal = 12.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
+        val shapeProvider = remember { GridCornerShapeProvider(columns = 2) }
+
         for (i in categoryOptions.indices step 2) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -110,15 +113,16 @@ fun IssueSortDropdownItems(
                         val badgeColor = getCategoryFilterColor(option)
                         val count = categoryCounts[option]
                         val labelWithCount = if (count != null) "${option.label} ($count)" else option.label
+                        val shape = shapeProvider.shapeFor(i + j, categoryOptions.size)
 
                         Surface(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(10.dp))
+                                .clip(shape)
                                 .clickable {
                                     onCategorySelected(option)
                                 },
-                            shape = RoundedCornerShape(10.dp),
+                            shape = shape,
                             color = badgeColor.copy(alpha = if (isSelected) 0.25f else 0.08f),
                             border = BorderStroke(
                                 width = if (isSelected) 1.5.dp else 1.dp,
@@ -265,7 +269,7 @@ fun IssueSortDropdown(
 @Preview(showBackground = true, name = "Navigable Interactive Dropdown")
 @Composable
 fun IssueSortDropdownNavigablePreview() {
-    var selectedCategory by remember { mutableStateOf(CategoryFilter.ALL) }
+    var selectedCategory by remember { mutableStateOf(CategoryFilter.FEATURE) }
     var selectedSort by remember { mutableStateOf(IssueSort.NEWEST) }
     val mockCategoryCounts = remember {
         mapOf(

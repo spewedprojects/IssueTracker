@@ -3,60 +3,60 @@
 #### Home screen
 <table>
   <tr align="center">
-    <td>Intro</td>
-    <td>With apps added</td>
-    <td>About</td>
-    <td>Add custom Project</td>
-    <td>Add installed app</td>
+    <td width="20%">Intro</td>
+    <td width="20%">With apps added</td>
+    <td width="20%">About</td>
+    <td width="20%">Add custom Project</td>
+    <td width="20%">Add installed app</td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/home/home_01.png" width="100%"></td>
-    <td><img src="docs/screenshots/home/home_02.png" width="100%"></td>
-    <td><img src="docs/screenshots/home/home_03.png" width="100%"></td>
-    <td><img src="docs/screenshots/home/home_04.png" width="100%"></td>
-    <td><img src="docs/screenshots/home/home_05.png" width="100%"></td>
+    <td><img src="docs/screenshots/home/home_01.png" ></td>
+    <td><img src="docs/screenshots/home/home_02.png"></td>
+    <td><img src="docs/screenshots/home/home_03.png"></td>
+    <td><img src="docs/screenshots/home/home_04.png"></td>
+    <td><img src="docs/screenshots/home/home_05.png"></td>
   </tr>
 </table>
 
 #### Issue Tracker Screen
 <table>
   <tr align="center">
-    <td>Add Issue Dialog</td>
-    <td>Issues Collapsed</td>
-    <td>Issues Expanded</td>
-    <td>Sort options</td>
-    <td>Sort Indicators</td>
+    <td width="20%">Add Issue Dialog</td>
+    <td width="20%">Issues Collapsed</td>
+    <td width="20%">Issues Expanded</td>
+    <td width="20%">Sort options</td>
+    <td width="20%">Sort Indicators</td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/issueScreen/issuescreen_02.png" width="100%"></td>
-    <td><img src="docs/screenshots/issueScreen/issuescreen_01.png" width="100%"></td>
-    <td><img src="docs/screenshots/issueScreen/issuescreen_03.png" width="100%"></td>
-    <td><img src="docs/screenshots/issueScreen/issuescreen_04.png" width="100%"></td>
-    <td><img src="docs/screenshots/issueScreen/issuescreen_05.png" width="100%"></td>
+    <td><img src="docs/screenshots/issueScreen/issuescreen_02.png"></td>
+    <td><img src="docs/screenshots/issueScreen/issuescreen_01.png"></td>
+    <td><img src="docs/screenshots/issueScreen/issuescreen_03.png"></td>
+    <td><img src="docs/screenshots/issueScreen/issuescreen_04.png"></td>
+    <td><img src="docs/screenshots/issueScreen/issuescreen_05.png"></td>
   </tr>
 </table>
 
 #### Global Search Screen
 <table>
   <tr align="center">
-    <td>Search Interface</td>
-    <td>Search Results</td>
+    <td width="50%">Search Interface</td>
+    <td width="50%">Search Results</td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/globalSearch/globalsearch_02.png" width="100%"></td>
-    <td><img src="docs/screenshots/globalSearch/globalsearch_01.png" width="100%"></td>
+    <td><img src="docs/screenshots/globalSearch/globalsearch_02.png"></td>
+    <td><img src="docs/screenshots/globalSearch/globalsearch_01.png"></td>
   </tr>
 </table>
 
 #### Settings Screen
 <table>
   <tr align="center">
-    <td>Sort Mode</td>
-    <td>Theme adjust</td>
-    <td>Custom colors</td>
-    <td>Restore and Backup</td>
-    <td>Import conflict dialog 1</td>
-    <td>Import conflict dialog 2</td>
+    <td width="16%">Sort Mode</td>
+    <td width="16%">Theme adjust</td>
+    <td width="16%">Custom colors</td>
+    <td width="16%">Restore and Backup</td>
+    <td width="16%">Import conflict dialog 1</td>
+    <td width="16%">Import conflict dialog 2</td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/settings/settings_00.png" width="100%"></td>

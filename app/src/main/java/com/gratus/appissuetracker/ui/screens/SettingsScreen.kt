@@ -85,7 +85,7 @@ fun SettingsScreen(
             }
         },
         onBack = onBack,
-        colorSchemeType = String(),
+        colorSchemeType = activeScheme,
     )
 }
 
@@ -133,13 +133,13 @@ fun SettingsScreenContent(
             SortingSettingsCard(
                 activeSortMode = activeSortMode,
                 onSortModeChange = onSortModeChange,
-                colorSchemeType = String(),
+                colorSchemeType = activeScheme,
             )
 
             AestheticsSettingsCard(
                 activeTheme = activeTheme,
                 activeScheme = activeScheme,
-                colorSchemeType = String(),
+                colorSchemeType = activeScheme,
                 colorfulHueShift = colorfulHueShift,
                 colorfulSatScale = colorfulSatScale,
                 onThemeChange = onThemeChange,
@@ -151,7 +151,7 @@ fun SettingsScreenContent(
             BackupSettingsCard(
                 onExportBackups = onExportBackups,
                 onImportBackups = onImportBackups,
-                colorSchemeType = String(),
+                colorSchemeType = activeScheme,
             )
         }
     }
@@ -175,7 +175,7 @@ fun SettingsScreenMinimalPreview() {
             onExportBackups = {},
             onImportBackups = {},
             onBack = {},
-            colorSchemeType = String(),
+            colorSchemeType = "minimal",
         )
     }
 }
@@ -198,7 +198,7 @@ fun SettingsScreenColorfulDarkPreview() {
             onExportBackups = {},
             onImportBackups = {},
             onBack = {},
-            colorSchemeType = String()
+            colorSchemeType = "colorful"
         )
     }
 }
@@ -206,11 +206,11 @@ fun SettingsScreenColorfulDarkPreview() {
 @Preview(showBackground = true, heightDp = 1500)
 @Composable
 fun SettingsScreenSimplePreview() {
-    SoftTodoTheme(themeMode = "auto", colorSchemeType = "simple") {
+    SoftTodoTheme(themeMode = "auto", colorSchemeType = "system") {
         SettingsScreenContent(
             activeTheme = "auto",
-            activeScheme = "simple",
-            colorSchemeType = "simple",
+            activeScheme = "system",
+            colorSchemeType = "system",
             colorfulHueShift = 0f,
             colorfulSatScale = 1f,
             activeSortMode = "added_date",

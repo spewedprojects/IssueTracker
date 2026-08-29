@@ -15,8 +15,8 @@ android {
         applicationId = "com.gratus.appissuetracker"
         minSdk = 27
         targetSdk = 37
-        versionCode = 12
-        versionName = "2.6.2"
+        versionCode = 13
+        versionName = "2.6.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

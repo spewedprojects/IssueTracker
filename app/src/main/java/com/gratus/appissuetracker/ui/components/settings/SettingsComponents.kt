@@ -42,6 +42,7 @@ import com.gratus.appissuetracker.ui.theme.AppFontSizes
 import androidx.compose.ui.tooling.preview.Preview
 import com.gratus.appissuetracker.ui.theme.SoftTodoTheme
 import com.gratus.appissuetracker.R
+import com.gratus.appissuetracker.ui.utils.GridCornerShapeProvider
 
 @Composable
 fun AestheticsSettingsCard(
@@ -60,13 +61,10 @@ fun AestheticsSettingsCard(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = when (colorSchemeType) {
-            "simple" -> BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-            )
-            "system" -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-            )
-            else -> BorderStroke(0.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.0f)
-            )
-        },
+            "simple" -> BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+            "system" -> BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+            else -> null
+        }
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -102,7 +100,7 @@ fun AestheticsSettingsCard(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(10.dp))
                                 .background(
                                     if (isSelected) MaterialTheme.colorScheme.primaryContainer 
                                     else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
@@ -111,7 +109,7 @@ fun AestheticsSettingsCard(
                                     1.dp,
                                     if (isSelected) MaterialTheme.colorScheme.primary 
                                     else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
-                                    RoundedCornerShape(8.dp)
+                                    RoundedCornerShape(10.dp)
                                 )
                                 .clickable { onThemeChange(mode) }
                                 .padding(vertical = 8.dp),
@@ -180,7 +178,7 @@ fun AestheticsSettingsCard(
                                 Icon(
                                     imageVector = when (schemeKey) {
                                         "minimal" -> Icons.Default.Spa
-                                        "simple" -> Icons.Default.BrightnessLow
+                                        "simple" -> Icons.Default.FilterBAndW
                                         "colorful" -> Icons.Default.Palette
                                         else -> Icons.Default.SettingsSuggest
                                     },
@@ -366,13 +364,10 @@ fun BackupSettingsCard(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = when (colorSchemeType) {
-            "simple" -> BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-            )
-            "system" -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-            )
-            else -> BorderStroke(0.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.0f)
-            )
-        },
+            "simple" -> BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+            "system" -> BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+            else -> null
+        }
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -493,13 +488,10 @@ fun SortingSettingsCard(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = when (colorSchemeType) {
-            "simple" -> BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-            )
-            "system" -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-            )
-            else -> BorderStroke(0.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.0f)
-            )
-        },
+            "simple" -> BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+            "system" -> BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+            else -> null
+        }
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -530,6 +522,8 @@ fun SortingSettingsCard(
                     Pair("lowest_open_issues", "Lowest Open")
                 )
 
+                val shapeProvider = remember { GridCornerShapeProvider(columns = 2) }
+
                 for (i in sortModes.indices step 2) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -539,10 +533,11 @@ fun SortingSettingsCard(
                             if (i + j < sortModes.size) {
                                 val (mode, label) = sortModes[i + j]
                                 val isSelected = activeSortMode == mode
+                                val shape = shapeProvider.shapeFor(i + j, sortModes.size)
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clip(RoundedCornerShape(8.dp))
+                                        .clip(shape)
                                         .background(
                                             if (isSelected) MaterialTheme.colorScheme.primaryContainer
                                             else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
@@ -551,7 +546,7 @@ fun SortingSettingsCard(
                                             1.dp,
                                             if (isSelected) MaterialTheme.colorScheme.primary
                                             else MaterialTheme.colorScheme.outline.copy(alpha = 0.15f),
-                                            RoundedCornerShape(8.dp)
+                                            shape
                                         )
                                         .clickable { onSortModeChange(mode) }
                                         .padding(vertical = 8.dp),
@@ -577,12 +572,12 @@ fun SortingSettingsCard(
 @Preview(showBackground = true)
 @Composable
 fun SortingSettingsCardPreview() {
-    SoftTodoTheme {
+    SoftTodoTheme (colorSchemeType = "simple", themeMode = "light"){
         Box(modifier = Modifier.padding(16.dp)) {
             SortingSettingsCard(
-                activeSortMode = "added_date",
+                activeSortMode = "alphabetical",
                 onSortModeChange = {},
-                colorSchemeType = "minimal"
+                colorSchemeType = "simple"
             )
         }
     }
