@@ -61,7 +61,8 @@ data class TrackedApp(
     val packageName: String?, // null if manual custom project
     val versionName: String, // version name (e.g. "1.0.0" or package version)
     val isCustom: Boolean, // true if manually entered, false if user-installed app
-    val addedTimestamp: Long = System.currentTimeMillis()
+    val addedTimestamp: Long = System.currentTimeMillis(),
+    val description: String = ""
 ) {
     fun toJson(): JSONObject {
         val json = JSONObject()
@@ -71,6 +72,7 @@ data class TrackedApp(
         json.put("versionName", versionName)
         json.put("isCustom", isCustom)
         json.put("addedTimestamp", addedTimestamp)
+        json.put("description", description)
         return json
     }
 
@@ -82,7 +84,8 @@ data class TrackedApp(
                 packageName = if (json.isNull("packageName")) null else json.getString("packageName"),
                 versionName = json.optString("versionName", ""),
                 isCustom = json.getBoolean("isCustom"),
-                addedTimestamp = json.optLong("addedTimestamp", System.currentTimeMillis())
+                addedTimestamp = json.optLong("addedTimestamp", System.currentTimeMillis()),
+                description = json.optString("description", "")
             )
         }
     }

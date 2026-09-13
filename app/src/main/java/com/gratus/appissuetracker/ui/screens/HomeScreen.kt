@@ -19,6 +19,9 @@
 package com.gratus.appissuetracker.ui.screens
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -33,6 +36,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.*
@@ -41,6 +45,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
@@ -56,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gratus.appissuetracker.R
 import com.gratus.appissuetracker.data.TrackedApp
+import com.gratus.appissuetracker.ui.GlobalStats
 import com.gratus.appissuetracker.ui.InstalledAppInfo
 import com.gratus.appissuetracker.ui.MainViewModel
 import com.gratus.appissuetracker.ui.theme.AppFontSizes
@@ -74,6 +80,7 @@ fun HomeScreen(
     val apps by viewModel.apps.collectAsState()
     val openCounts by viewModel.openIssuesCounts.collectAsState()
     val totalCounts by viewModel.totalIssuesCounts.collectAsState()
+    val globalStats by viewModel.globalStats.collectAsState()
     val searchQuery by viewModel.globalSearchQuery.collectAsState()
     val searchResults by viewModel.globalSearchResults.collectAsState()
     val installedAppsList by viewModel.installedApps.collectAsState()
@@ -111,6 +118,7 @@ fun HomeScreen(
             apps = apps,
             openCounts = openCounts,
             totalCounts = totalCounts,
+            globalStats = globalStats,
             installedAppsList = installedAppsList,
             onAddCustom = { name, version ->
                 viewModel.addApp(name, null, version, true)
@@ -135,6 +143,7 @@ fun HomeScreenContent(
     apps: List<TrackedApp>,
     openCounts: Map<String, Int>,
     totalCounts: Map<String, Int>,
+    globalStats: GlobalStats = GlobalStats(),
     installedAppsList: List<InstalledAppInfo>,
     onAddCustom: (String, String) -> Unit,
     onAddInstalled: (List<InstalledAppInfo>) -> Unit,
@@ -146,6 +155,7 @@ fun HomeScreenContent(
 ) {
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var showAboutPopup by rememberSaveable { mutableStateOf(false) }
+    var showStatsPopup by rememberSaveable { mutableStateOf(false) }
     var appToDelete by remember { mutableStateOf<TrackedApp?>(null) }
 
     Scaffold(
@@ -154,12 +164,43 @@ fun HomeScreenContent(
         topBar = {
             TopAppBar(
                 title = {
+                    val chevronRotation by animateFloatAsState(
+                        targetValue = if (showStatsPopup) 180f else 0f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessLow
+                        ),
+                        label = "chevronRotation"
+                    )
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "Issue Tracker",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = AppFontSizes.title
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable {
+                                    if (!showStatsPopup) {
+                                        showAboutPopup = false
+                                    }
+                                    showStatsPopup = !showStatsPopup
+                                }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "Issue Tracker",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = AppFontSizes.title
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = if (showStatsPopup) "Hide Statistics" else "Show Statistics",
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .rotate(chevronRotation),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                            )
+                        }
                     }
                 },
                 navigationIcon = {
@@ -318,8 +359,8 @@ fun HomeScreenContent(
                         brush = Brush.verticalGradient(
                             colors = listOf(
                                 Color.Transparent,
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
                                 MaterialTheme.colorScheme.background.copy(alpha = 0.7f),
-                                MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
                                 MaterialTheme.colorScheme.background
                             )
                         )
@@ -349,7 +390,12 @@ fun HomeScreenContent(
                 Spacer(modifier = Modifier.weight(1f))
                 Box {
                     IconButton(
-                        onClick = { showAboutPopup = !showAboutPopup },
+                        onClick = {
+                            if (!showAboutPopup) {
+                                showStatsPopup = false
+                            }
+                            showAboutPopup = !showAboutPopup
+                        },
                         modifier = Modifier
                             .background(
                                 color = if (showAboutPopup) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent,
@@ -366,6 +412,7 @@ fun HomeScreenContent(
                 }
             }
 
+            // About Popup Overlay
             if (showAboutPopup) {
                 Box(
                     modifier = Modifier
@@ -401,6 +448,48 @@ fun HomeScreenContent(
                     )
             ) {
                 AboutPopupContent()
+            }
+
+            // Statistics Popup Overlay
+            if (showStatsPopup) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            showStatsPopup = false
+                        }
+                )
+                
+                BackHandler {
+                    showStatsPopup = false
+                }
+            }
+
+            AnimatedVisibility(
+                visible = showStatsPopup,
+                enter = fadeIn(animationSpec = tween(durationMillis = 250)) + slideInVertically(
+                    initialOffsetY = { -it / 3 },
+                    animationSpec = tween(durationMillis = 250)
+                ),
+                exit = fadeOut(animationSpec = tween(durationMillis = 200)) + slideOutVertically(
+                    targetOffsetY = { -it / 3 },
+                    animationSpec = tween(durationMillis = 200)
+                ),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(
+                        top = topPadding + 4.dp,
+                        start = 16.dp,
+                        end = 16.dp
+                    )
+            ) {
+                StatsPopup(
+                    stats = globalStats,
+                    onDismiss = { showStatsPopup = false }
+                )
             }
         }
     }
@@ -478,6 +567,21 @@ fun HomeScreenContentWithAppsPreview() {
             ),
             openCounts = mapOf("1" to 3, "2" to 0, "3" to 12),
             totalCounts = mapOf("1" to 10, "2" to 2, "3" to 34),
+            globalStats = GlobalStats(
+                totalApps = 3,
+                totalAll = 46,
+                closedAll = 31,
+                openAll = 15,
+                issuesCreated = 24,
+                issuesClosed = 16,
+                issuesOpen = 8,
+                featuresCreated = 14,
+                featuresImplemented = 10,
+                featuresOpen = 4,
+                ideasCreated = 8,
+                ideasImplemented = 5,
+                ideasOpen = 3
+            ),
             installedAppsList = emptyList(),
             onAddCustom = { _, _ -> },
             onAddInstalled = {},

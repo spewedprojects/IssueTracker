@@ -287,7 +287,7 @@ fun AddAppDialogContent(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Button(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(14.dp),
                     onClick = {
                         if (activeTab == 0) {
                             if (customName.isNotBlank()) {

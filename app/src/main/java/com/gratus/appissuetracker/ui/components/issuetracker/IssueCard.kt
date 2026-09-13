@@ -645,7 +645,9 @@ fun IssueCard(
                         Text("Delete", color = MaterialTheme.colorScheme.error)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = onEdit) {
+                    Button(
+                        shape = RoundedCornerShape(14.dp),
+                        onClick = onEdit) {
                         Text("Edit")
                     }
                 }

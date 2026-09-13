@@ -45,6 +45,25 @@ data class InstalledAppInfo(
     val versionName: String
 )
 
+data class GlobalStats(
+    val totalApps: Int = 0,
+    val totalAll: Int = 0,
+    val closedAll: Int = 0,
+    val openAll: Int = 0,
+    val issuesCreated: Int = 0,
+    val issuesClosed: Int = 0,
+    val issuesOpen: Int = 0,
+    val featuresCreated: Int = 0,
+    val featuresImplemented: Int = 0,
+    val featuresOpen: Int = 0,
+    val ideasCreated: Int = 0,
+    val ideasImplemented: Int = 0,
+    val ideasOpen: Int = 0
+) {
+    val completionRate: Int
+        get() = if (totalAll > 0) ((closedAll.toFloat() / totalAll) * 100).toInt() else 0
+}
+
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = IssueTrackerRepository(application)
     private val sharedPrefs = application.getSharedPreferences("issue_tracker_prefs", Context.MODE_PRIVATE)
@@ -76,6 +95,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Last Modified Timestamp for each app
     private val _lastModifiedTimestamps = MutableStateFlow<Map<String, Long>>(emptyMap())
     val lastModifiedTimestamps: StateFlow<Map<String, Long>> = _lastModifiedTimestamps.asStateFlow()
+
+    // Global Statistics across all apps
+    private val _globalStats = MutableStateFlow(GlobalStats())
+    val globalStats: StateFlow<GlobalStats> = _globalStats.asStateFlow()
 
     // Tracked Apps List
     private val _apps = MutableStateFlow<List<TrackedApp>>(emptyList())
@@ -205,21 +228,69 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val loadedApps = repository.getApps()
             _apps.value = loadedApps
             
-            // Calculate open, total issues counts, and last modified timestamps in background
+            // Calculate open, total issues counts, last modified timestamps, and global stats in background
             withContext(Dispatchers.IO) {
                 val openCounts = mutableMapOf<String, Int>()
                 val totalCounts = mutableMapOf<String, Int>()
                 val lastModMap = mutableMapOf<String, Long>()
+
+                var totalIssuesCreated = 0
+                var totalIssuesClosed = 0
+                var totalFeaturesCreated = 0
+                var totalFeaturesImplemented = 0
+                var totalIdeasCreated = 0
+                var totalIdeasImplemented = 0
+
                 loadedApps.forEach { app ->
                     val issues = repository.getIssues(app.id)
                     openCounts[app.id] = issues.count { !it.isClosed }
                     totalCounts[app.id] = issues.size
                     val maxIssueMod = issues.maxOfOrNull { it.lastModified } ?: app.addedTimestamp
                     lastModMap[app.id] = maxOf(maxIssueMod, app.addedTimestamp)
+
+                    issues.forEach { issue ->
+                        when {
+                            issue.category.equals("Issue", ignoreCase = true) -> {
+                                totalIssuesCreated++
+                                if (issue.isClosed) totalIssuesClosed++
+                            }
+                            issue.category.equals("Feature", ignoreCase = true) -> {
+                                totalFeaturesCreated++
+                                if (issue.isClosed) totalFeaturesImplemented++
+                            }
+                            issue.category.equals("Idea", ignoreCase = true) -> {
+                                totalIdeasCreated++
+                                if (issue.isClosed) totalIdeasImplemented++
+                            }
+                            else -> {
+                                totalIssuesCreated++
+                                if (issue.isClosed) totalIssuesClosed++
+                            }
+                        }
+                    }
                 }
                 _openIssuesCounts.value = openCounts
                 _totalIssuesCounts.value = totalCounts
                 _lastModifiedTimestamps.value = lastModMap
+
+                val totalAllCreated = totalIssuesCreated + totalFeaturesCreated + totalIdeasCreated
+                val totalAllClosed = totalIssuesClosed + totalFeaturesImplemented + totalIdeasImplemented
+
+                _globalStats.value = GlobalStats(
+                    totalApps = loadedApps.size,
+                    totalAll = totalAllCreated,
+                    closedAll = totalAllClosed,
+                    openAll = totalAllCreated - totalAllClosed,
+                    issuesCreated = totalIssuesCreated,
+                    issuesClosed = totalIssuesClosed,
+                    issuesOpen = totalIssuesCreated - totalIssuesClosed,
+                    featuresCreated = totalFeaturesCreated,
+                    featuresImplemented = totalFeaturesImplemented,
+                    featuresOpen = totalFeaturesCreated - totalFeaturesImplemented,
+                    ideasCreated = totalIdeasCreated,
+                    ideasImplemented = totalIdeasImplemented,
+                    ideasOpen = totalIdeasCreated - totalIdeasImplemented
+                )
             }
         }
     }

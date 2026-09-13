@@ -19,9 +19,16 @@
 package com.gratus.appissuetracker.ui.screens
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
@@ -40,12 +47,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -108,6 +117,7 @@ fun IssueTrackerScreen(
     }
 
     val context = LocalContext.current
+    val currentApp by viewModel.currentApp.collectAsState()
     val issues by viewModel.issues.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val currentFilter by viewModel.filter.collectAsState()
@@ -115,7 +125,7 @@ fun IssueTrackerScreen(
     val sortMode by viewModel.sortMode.collectAsState()
 
     IssueTrackerScreenContent(
-        app = app,
+        app = currentApp,
         colorSchemeType = colorSchemeType,
         issues = issues,
         searchQuery = searchQuery,
@@ -124,7 +134,7 @@ fun IssueTrackerScreen(
         currentSort = sortMode,
         highlightIssueId = highlightIssueId,
         onBack = onBack,
-        onLaunch = app.packageName?.let { pkg ->
+        onLaunch = currentApp.packageName?.let { pkg ->
             {
                 val intent = context.packageManager.getLaunchIntentForPackage(pkg)
                 if (intent != null) {
@@ -142,6 +152,7 @@ fun IssueTrackerScreen(
         onToggleIssue = { viewModel.toggleStatus(it) },
         onDeleteIssue = { viewModel.deleteIssue(it) },
         onUpdateIssue = { viewModel.updateIssue(it) },
+        onUpdateAppDescription = { viewModel.updateAppDescription(it) },
         onAddIssue = { title, desc, cat, prio, version -> viewModel.addIssue(title, desc, cat, prio, version) },
         onAddComment = { issue, comment -> viewModel.addComment(issue, comment) },
         onEditComment = { issue, index, newText -> viewModel.updateComment(issue, index, newText) },
@@ -172,11 +183,13 @@ fun IssueTrackerScreenContent(
     onDeleteIssue: (IssueItem) -> Unit,
     onUpdateIssue: (IssueItem) -> Unit,
     onAddIssue: (String, String, String, String, String?) -> Unit,
+    onUpdateAppDescription: (String) -> Unit = {},
     onAddComment: (IssueItem, String) -> Unit,
     onEditComment: (IssueItem, Int, String) -> Unit = { _, _, _ -> },
     onDeleteComment: (IssueItem, Int) -> Unit = { _, _ -> }
 ) {
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
+    var showAppStatsPopup by rememberSaveable { mutableStateOf(false) }
     var itemToEditId by rememberSaveable { mutableStateOf<String?>(null) }
     var issueToDelete by remember { mutableStateOf<IssueItem?>(null) }
 
@@ -233,7 +246,40 @@ fun IssueTrackerScreenContent(
         containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { Text(app.name, fontWeight = FontWeight.Bold, fontSize = AppFontSizes.title) },
+                title = {
+                    val chevronRotation by animateFloatAsState(
+                        targetValue = if (showAppStatsPopup) 180f else 0f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessLow
+                        ),
+                        label = "chevronRotation"
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { showAppStatsPopup = !showAppStatsPopup }
+                            .padding(horizontal = 6.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = app.name,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = AppFontSizes.title,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowDown,
+                            contentDescription = if (showAppStatsPopup) "Hide Statistics" else "Show Statistics",
+                            modifier = Modifier
+                                .size(20.dp)
+                                .rotate(chevronRotation),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -263,12 +309,15 @@ fun IssueTrackerScreenContent(
             }
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(paddingValues)
         ) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -512,7 +561,48 @@ fun IssueTrackerScreenContent(
                 }
             }
         }
+
+        // App Statistics and Description Popup Overlay
+        if (showAppStatsPopup) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        showAppStatsPopup = false
+                    }
+            )
+
+            BackHandler {
+                showAppStatsPopup = false
+            }
+        }
+
+        AnimatedVisibility(
+            visible = showAppStatsPopup,
+            enter = fadeIn(animationSpec = tween(durationMillis = 250)) + slideInVertically(
+                initialOffsetY = { -it / 3 },
+                animationSpec = tween(durationMillis = 250)
+            ),
+            exit = fadeOut(animationSpec = tween(durationMillis = 200)) + slideOutVertically(
+                targetOffsetY = { -it / 3 },
+                animationSpec = tween(durationMillis = 200)
+            ),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(horizontal = 16.dp, vertical = 4.dp)
+        ) {
+            AppStatsPopup(
+                app = app,
+                issues = issues,
+                onUpdateDescription = onUpdateAppDescription,
+                onDismiss = { showAppStatsPopup = false }
+            )
+        }
     }
+}
 
     if (showAddDialog) {
         val itemToEdit = issues.find { it.id == itemToEditId }

@@ -51,6 +51,9 @@ class IssueTrackerViewModel(application: Application, val app: TrackedApp) : And
     private val repository = IssueTrackerRepository(application)
     private val sharedPrefs = application.getSharedPreferences("issue_tracker_prefs", Context.MODE_PRIVATE)
 
+    private val _currentApp = MutableStateFlow(app)
+    val currentApp: StateFlow<TrackedApp> = _currentApp.asStateFlow()
+
     private val _issues = MutableStateFlow<List<IssueItem>>(emptyList())
     val issues: StateFlow<List<IssueItem>> = _issues.asStateFlow()
 
@@ -90,6 +93,10 @@ class IssueTrackerViewModel(application: Application, val app: TrackedApp) : And
 
     private fun loadIssues() {
         viewModelScope.launch {
+            val freshApp = repository.getApps().find { it.id == app.id }
+            if (freshApp != null) {
+                _currentApp.value = freshApp
+            }
             val loadedIssues = repository.getIssues(app.id)
 
             // Check if any existing issues have the default serialNumber 0
@@ -172,6 +179,23 @@ class IssueTrackerViewModel(application: Application, val app: TrackedApp) : And
                     val updatedApp = currentApps[index].copy(versionName = newVersionName)
                     currentApps[index] = updatedApp
                     repository.saveApps(currentApps)
+                }
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
+    }
+
+    fun updateAppDescription(newDescription: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val currentApps = repository.getApps().toMutableList()
+                val index = currentApps.indexOfFirst { it.id == app.id }
+                if (index != -1) {
+                    val updatedApp = currentApps[index].copy(description = newDescription.trim())
+                    currentApps[index] = updatedApp
+                    repository.saveApps(currentApps)
+                    _currentApp.value = updatedApp
                 }
             } catch (e: Exception) {
                 // Ignore

@@ -197,21 +197,6 @@ fun IssueAddDialogContent(
             Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = { Text("Title") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction = ImeAction.Next
-                )
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
                 value = versionName,
                 onValueChange = { versionName = it },
                 label = { Text("Version Name") },
@@ -225,6 +210,81 @@ fun IssueAddDialogContent(
             )
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = title,
+                onValueChange = { title = it },
+                label = { Text("Title") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Next
+                )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = { Text("Description") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp),
+                shape = RoundedCornerShape(12.dp),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences
+                )
+            )
+
+            // Formatting toolbar
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                IconButton(onClick = {
+                    val text = description.text
+                    val selection = description.selection
+                    if (selection.start != selection.end) {
+                        val selectedText = text.substring(selection.start, selection.end)
+                        val formatted = "**$selectedText**"
+                        val newText = text.replaceRange(selection.start, selection.end, formatted)
+                        description = TextFieldValue(
+                            text = newText,
+                            selection = TextRange(selection.start + 2, selection.start + 2 + selectedText.length)
+                        )
+                    } else {
+                        Toast.makeText(context, "Select text to format bold", Toast.LENGTH_SHORT).show()
+                    }
+                }) {
+                    Icon(Icons.Default.FormatBold, contentDescription = "Bold")
+                }
+                IconButton(
+                    onClick = {
+                        val text = description.text
+                        val selection = description.selection
+                        if (selection.start != selection.end) {
+                            val selectedText = text.substring(selection.start, selection.end)
+                            val formatted = "__${selectedText}__"
+                            val newText = text.replaceRange(selection.start, selection.end, formatted)
+                            description = TextFieldValue(newText, TextRange(selection.start + formatted.length))
+                        } else {
+                            Toast.makeText(context, "Select text to format italic", Toast.LENGTH_SHORT).show()
+                        }
+                    }) {
+                    Icon(Icons.Default.FormatItalic, contentDescription = "Italic")
+                }
+                IconButton(onClick = {
+                    val text = description.text
+                    val selection = description.selection
+                    val newText = text.replaceRange(selection.start, selection.start, "- ")
+                    description = TextFieldValue(newText, TextRange(selection.start + 2))
+                }) {
+                    Icon(Icons.Default.FormatListBulleted, contentDescription = "Bullet List")
+                }
+            }
             
             Text("Category", fontSize = AppFontSizes.small)
             Row(
@@ -287,66 +347,6 @@ fun IssueAddDialogContent(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = description,
-                onValueChange = { description = it },
-                label = { Text("Description") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp),
-                shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences
-                )
-            )
-
-            // Formatting toolbar
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                IconButton(onClick = {
-                    val text = description.text
-                    val selection = description.selection
-                    if (selection.start != selection.end) {
-                        val selectedText = text.substring(selection.start, selection.end)
-                        val formatted = "**$selectedText**"
-                        val newText = text.replaceRange(selection.start, selection.end, formatted)
-                        description = TextFieldValue(
-                            text = newText,
-                            selection = TextRange(selection.start + 2, selection.start + 2 + selectedText.length)
-                        )
-                    } else {
-                        Toast.makeText(context, "Select text to format bold", Toast.LENGTH_SHORT).show()
-                    }
-                }) {
-                    Icon(Icons.Default.FormatBold, contentDescription = "Bold")
-                }
-                IconButton(
-                    onClick = {
-                    val text = description.text
-                    val selection = description.selection
-                    if (selection.start != selection.end) {
-                        val selectedText = text.substring(selection.start, selection.end)
-                        val formatted = "__${selectedText}__"
-                        val newText = text.replaceRange(selection.start, selection.end, formatted)
-                        description = TextFieldValue(newText, TextRange(selection.start + formatted.length))
-                    } else {
-                        Toast.makeText(context, "Select text to format italic", Toast.LENGTH_SHORT).show()
-                    }
-                }) {
-                    Icon(Icons.Default.FormatItalic, contentDescription = "Italic")
-                }
-                IconButton(onClick = {
-                    val text = description.text
-                    val selection = description.selection
-                    val newText = text.replaceRange(selection.start, selection.start, "- ")
-                    description = TextFieldValue(newText, TextRange(selection.start + 2))
-                }) {
-                    Icon(Icons.Default.FormatListBulleted, contentDescription = "Bullet List")
-                }
-            }
             
             Spacer(modifier = Modifier.height(24.dp))
             
